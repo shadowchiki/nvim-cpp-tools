@@ -3,78 +3,106 @@ local M = {}
 function M.remove_unused_includes()
 	local bufnr = vim.api.nvim_get_current_buf()
 	local diagnostics = vim.diagnostic.get(bufnr)
-
 	local lines_to_remove = {}
-
 	for _, diag in ipairs(diagnostics) do
 		if diag.code == "unused-includes" then
 			table.insert(lines_to_remove, diag.lnum)
 		end
 	end
-
 	table.sort(lines_to_remove, function(a, b)
 		return a > b
 	end)
-
 	for _, line in ipairs(lines_to_remove) do
 		vim.api.nvim_buf_set_lines(bufnr, line, line + 1, false, {})
 	end
 end
 
+M.FileStructure = {
+	namespaces = {},
+	classes = {
+		{
+			name = "",
+			constructors = {},
+			methods = {},
+			needDestructor = false,
+		},
+	},
+}
+
+function M.get_namespaces()
+	local bufnr = vim.api.nvim_get_current_buf()
+	local parser = vim.treesitter.get_parser(bufnr)
+	local tree = parser:parse()[1]
+	local root = tree:root()
+	local namespaces = {}
+
+	local queryNested = "(nested_namespace_specifier) @namespace"
+	local query = "(namespace_definition name: (namespace_identifier) @namespace)"
+	local result = vim.treesitter.query.parse("cpp", queryNested)
+	for _, node in result:iter_captures(root, bufnr) do
+		local capture_text = vim.treesitter.get_node_text(node, bufnr)
+		table.insert(namespaces, capture_text)
+	end
+
+	if #namespaces == 0 then
+		result = vim.treesitter.query.parse("cpp", query)
+		for _, node in result:iter_captures(root, bufnr) do
+			table.insert(namespaces, M.get_node_name(node, bufnr))
+		end
+	end
+
+	return namespaces
+end
+
 function M.get_class_info()
 	local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-	local namespaces = {}
 	local class_name = nil
 	local methods = {}
+	local bufnr = vim.api.nvim_get_current_buf()
+	local parser = vim.treesitter.get_parser(bufnr)
+	local tree = parser:parse()[1]
+	local ts_utils = require("nvim-treesitter.ts_utils")
 
-	local namespace_stack = {}
+	-- Navegar por los nodos del árbol para encontrar namespaces
+	local root = tree:root()
+
+	local class_number = 1
+	local file_structure = M.FileStructure
+
+	file_structure.namespaces = M.get_namespaces()
+
 	local inside_class = false
 
 	for _, line in ipairs(lines) do
-		-- Detectar namespaces
-		local namespace = line:match("^%s*namespace%s+(%w+)%s*{")
-		if namespace then
-			table.insert(namespace_stack, namespace)
-			table.insert(namespaces, namespace)
-		end
-
-		-- Salir de un namespace
-		if line:match("^%s*}%s*") and #namespace_stack > 0 then
-			table.remove(namespace_stack)
-		end
-
 		-- Detectar clase
 		local class_match = line:match("^%s*class%s+(%w+)")
 		if class_match then
 			class_name = class_match
+			file_structure.classes[class_number].name = class_name
 			inside_class = true
 		end
 
 		-- Salir de la clase
 		if inside_class and line:match("^%s*};") then
 			inside_class = false
+			class_number = class_number + 1
 		end
 
 		-- Detectar constructores, destructores y funciones
 		if inside_class then
 			local method_match = line:match("^%s*[%w%s%*&]+(%w+)%s*%b()%s*[constvirtualstatic]*%s*;") -- Mejor regex
-			if method_match then
+			if line:match("^%s*[%w%s%*&]+(%w+)%s*%b()%s*[constvirtualstatic]*%s*;") then
 				local params = line:match("%((.-)%)") or ""
 				table.insert(methods, { name = method_match, params = params })
 			end
 		end
 	end
-
-	return {
-		namespaces = namespaces,
-		class_name = class_name,
-		methods = methods,
-	}
+	return file_structure
 end
 
 function M.generate_cpp_file()
-	local info = M.get_class_info()
-	if not info.class_name then
+	local file_structure = M.get_class_info()
+	if #file_structure.classes <= 0 then
 		print("No se encontró ninguna clase en el archivo actual.")
 		return
 	end
@@ -88,13 +116,12 @@ function M.generate_cpp_file()
 	}
 
 	-- Abrir namespaces
-	for _, ns in ipairs(info.namespaces) do
+	for _, ns in ipairs(file_structure.namespaces) do
 		table.insert(cpp_lines, "namespace " .. ns .. " {")
 	end
 
-	-- Agregar implementación de métodos
-	for _, method in ipairs(info.methods) do
-		local method_def = info.class_name .. "::" .. method.name .. "(" .. method.params .. ")"
+	for _, method in ipairs(file_structure.classes[1].methods) do
+		local method_def = file_structure.classes[1].name .. "::" .. method.name .. "(" .. method.params .. ")"
 		table.insert(cpp_lines, method_def .. " {")
 		table.insert(cpp_lines, "    // TODO: Implementar " .. method.name)
 		table.insert(cpp_lines, "}")
@@ -102,22 +129,19 @@ function M.generate_cpp_file()
 	end
 
 	-- Cerrar namespaces
-	for _ = 2, #info.namespaces do
+	for _ = 1, #file_structure.namespaces do
 		table.insert(cpp_lines, "}")
 	end
 
-	for _, value in ipairs(cpp_lines) do
-		print(_, value)
-	end
-
 	-- Escribir el archivo .cpp
-	-- local file = io.open(cpp_filename, "w")
-	-- if file then
-	-- 	file:write(table.concat(cpp_lines, "\n"))
-	-- 	file:close()
-	-- 	print("Archivo generado: " .. cpp_filename)
-	-- else
-	-- 	print("Error al crear el archivo " .. cpp_filename)
-	-- end
+	local file = io.open(cpp_filename, "w")
+	if file then
+		file:write(table.concat(cpp_lines, "\n"))
+		file:close()
+		-- print("Archivo generado: " .. cpp_filename)
+		vim.cmd("edit " .. cpp_filename)
+	else
+		print("Error al crear el archivo " .. cpp_filename)
+	end
 end
 return M
