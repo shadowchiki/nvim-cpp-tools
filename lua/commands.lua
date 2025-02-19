@@ -17,18 +17,6 @@ function M.remove_unused_includes()
 	end
 end
 
-M.FileStructure = {
-	namespaces = {},
-	classes = {
-		{
-			name = "",
-			constructors = {},
-			methods = {},
-			needDestructor = false,
-		},
-	},
-}
-
 function M.get_namespaces()
 	local bufnr = vim.api.nvim_get_current_buf()
 	local parser = vim.treesitter.get_parser(bufnr)
@@ -47,7 +35,7 @@ function M.get_namespaces()
 	if #namespaces == 0 then
 		result = vim.treesitter.query.parse("cpp", query)
 		for _, node in result:iter_captures(root, bufnr) do
-			table.insert(namespaces, M.get_node_name(node, bufnr))
+			table.insert(namespaces, vim.treesitter.get_node_text(node, bufnr))
 		end
 	end
 
@@ -55,9 +43,6 @@ function M.get_namespaces()
 end
 
 function M.get_class_info()
-	local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-	local class_name = nil
-	local methods = {}
 	local bufnr = vim.api.nvim_get_current_buf()
 	local parser = vim.treesitter.get_parser(bufnr)
 	local tree = parser:parse()[1]
@@ -66,37 +51,60 @@ function M.get_class_info()
 	-- Navegar por los nodos del árbol para encontrar namespaces
 	local root = tree:root()
 
-	local class_number = 1
-	local file_structure = M.FileStructure
+	local file_structure = {
+		namespaces = {},
+		classes = {
+			{
+				name = "",
+				constructors = {},
+				methods = {},
+				needDestructor = false,
+			},
+		},
+	}
 
 	file_structure.namespaces = M.get_namespaces()
 
-	local inside_class = false
+	local queryString =
+		"(class_specifier name:(type_identifier)@className body:(field_declaration_list (declaration declarator: (function_declarator parameters: (parameter_list))@parameterList)))"
 
-	for _, line in ipairs(lines) do
-		-- Detectar clase
-		local class_match = line:match("^%s*class%s+(%w+)")
-		if class_match then
-			class_name = class_match
-			file_structure.classes[class_number].name = class_name
-			inside_class = true
+	local result = vim.treesitter.query.parse("cpp", queryString)
+	local actual_class = ""
+	for id, node in result:iter_captures(root, bufnr) do
+		local capture_name = result.captures[id]
+		local text_name = vim.treesitter.get_node_text(node, bufnr)
+		if capture_name == "className" then
+			if not file_structure.classes[text_name] then
+				file_structure.classes[text_name] = {
+					name = text_name,
+					constructors = {},
+					methods = {},
+					needDestructor = false,
+				}
+			end
+			actual_class = text_name
 		end
-
-		-- Salir de la clase
-		if inside_class and line:match("^%s*};") then
-			inside_class = false
-			class_number = class_number + 1
-		end
-
-		-- Detectar constructores, destructores y funciones
-		if inside_class then
-			local method_match = line:match("^%s*[%w%s%*&]+(%w+)%s*%b()%s*[constvirtualstatic]*%s*;") -- Mejor regex
-			if line:match("^%s*[%w%s%*&]+(%w+)%s*%b()%s*[constvirtualstatic]*%s*;") then
-				local params = line:match("%((.-)%)") or ""
-				table.insert(methods, { name = method_match, params = params })
+		if capture_name == "parameterList" and actual_class ~= nil then
+			if file_structure.classes[actual_class] then
+				table.insert(file_structure.classes[actual_class].constructors, text_name)
 			end
 		end
 	end
+
+	local results = {}
+	for id, node, _ in result:iter_captures(root, bufnr, 0, -1) do
+		local capture_name = result.captures[id] -- Nombre de la captura en la query
+		local node_text = vim.treesitter.get_node_text(node, bufnr) -- Texto del nodo
+
+		table.insert(results, capture_name .. " " .. node_text) -- Agrega el texto capturado
+	end
+
+	local file = io.open(vim.fn.expand("test.txt"), "w") -- Guardar en home
+	if file then
+		file:write(table.concat(results, "\n"))
+		file:close()
+	end
+
 	return file_structure
 end
 
@@ -120,15 +128,13 @@ function M.generate_cpp_file()
 		table.insert(cpp_lines, "namespace " .. ns .. " {")
 	end
 
-	for _, method in ipairs(file_structure.classes[1].methods) do
-		local method_def = file_structure.classes[1].name .. "::" .. method.name .. "(" .. method.params .. ")"
-		table.insert(cpp_lines, method_def .. " {")
-		table.insert(cpp_lines, "    // TODO: Implementar " .. method.name)
-		table.insert(cpp_lines, "}")
-		table.insert(cpp_lines, "")
+	for _, value in pairs(file_structure.classes) do
+		for _, each in ipairs(value.constructors) do
+			table.insert(cpp_lines, value.name .. "::" .. each .. "{")
+			table.insert(cpp_lines, "}")
+		end
 	end
 
-	-- Cerrar namespaces
 	for _ = 1, #file_structure.namespaces do
 		table.insert(cpp_lines, "}")
 	end
