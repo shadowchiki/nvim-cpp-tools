@@ -66,7 +66,7 @@ function M.get_class_info()
 	file_structure.namespaces = M.get_namespaces()
 
 	local queryString =
-		"(class_specifier name:(type_identifier)@className body:(field_declaration_list (declaration declarator: (function_declarator parameters: (parameter_list))@parameterList)))"
+		"(class_specifier name:(type_identifier)@className body:(field_declaration_list (declaration declarator: (function_declarator declarator: (destructor_name)@destructor ))))(class_specifier name:(type_identifier)@className body:(field_declaration_list (declaration declarator: (function_declarator declarator: (identifier) parameters: (parameter_list))@parameterList)))"
 
 	local result = vim.treesitter.query.parse("cpp", queryString)
 	local actual_class = ""
@@ -87,6 +87,11 @@ function M.get_class_info()
 		if capture_name == "parameterList" and actual_class ~= nil then
 			if file_structure.classes[actual_class] then
 				table.insert(file_structure.classes[actual_class].constructors, text_name)
+			end
+		end
+		if capture_name == "destructor" and actual_class ~= nil then
+			if file_structure.classes[actual_class] then
+				file_structure.classes[actual_class].needDestructor = true
 			end
 		end
 	end
@@ -131,6 +136,10 @@ function M.generate_cpp_file()
 	for _, value in pairs(file_structure.classes) do
 		for _, each in ipairs(value.constructors) do
 			table.insert(cpp_lines, value.name .. "::" .. each .. "{")
+			table.insert(cpp_lines, "}")
+		end
+		if value.needDestructor then
+			table.insert(cpp_lines, value.name .. "::" .. "~" .. value.name .. "()" .. "{")
 			table.insert(cpp_lines, "}")
 		end
 	end
