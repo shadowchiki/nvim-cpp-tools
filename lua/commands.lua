@@ -53,9 +53,12 @@ function M.dispatch_constructor_params(params)
 	local paramsWithOutParentesis = params:gsub("[()]", "")
 	local paramsRemovedBlanck = paramsWithOutParentesis:gsub(", ", ",")
 	local paramsSplit = vim.split(paramsRemovedBlanck, ",")
-	for _, param in ipairs(paramsSplit) do
-		local paramSplited = vim.split(param, " ")
-		table.insert(paramSplitedStructure.params, { type = paramSplited[1], name = paramSplited[2] })
+	-- This validation is beacuse is a empty params will not added to the params structure
+	if paramsSplit[1] ~= "" then
+		for _, param in ipairs(paramsSplit) do
+			local paramSplited = vim.split(param, " ")
+			table.insert(paramSplitedStructure.params, { type = paramSplited[1], name = paramSplited[2] })
+		end
 	end
 	local file = io.open(vim.fn.expand("contact.txt"), "w") -- Guardar en home
 	if file then
@@ -88,6 +91,7 @@ function M.get_class_info()
 
 	local result = ts_query.get_query("cpp", "class")
 	local actual_class = ""
+	local class_count = 1
 	local method_combination_counter = 0
 	local constructor_param_combination_counter = 0
 	local attribute_combination_counter = 0
@@ -98,14 +102,24 @@ function M.get_class_info()
 			if not file_structure.classes[text_name] then
 				file_structure.classes[text_name] = {
 					name = text_name,
+					inheritance = "",
+					order = class_count,
 					constructors = {},
 					attributes = {},
 					methods = {},
 					needDestructor = false,
 				}
+				class_count = class_count + 1
 			end
 			actual_class = text_name
 		end
+
+		if capture_name == "inheritance" and actual_class ~= nil then
+			if file_structure.classes[actual_class] then
+				file_structure.classes[actual_class].inheritance = text_name
+			end
+		end
+
 		if capture_name == "constructorParamList" and actual_class ~= nil then
 			if file_structure.classes[actual_class] then
 				local constructors = file_structure.classes[actual_class].constructors
@@ -161,6 +175,9 @@ function M.get_class_info()
 		file:write(table.concat(results, "\n"))
 		file:close()
 	end
+	table.sort(file_structure.classes, function(a, b)
+		return a.order < b.order
+	end)
 	return file_structure
 end
 
@@ -189,11 +206,13 @@ function M.generate_cpp_file()
 	for _, class in pairs(file_structure.classes) do
 		for _, constructor in ipairs(class.constructors) do
 			table.insert(cpp_lines, class.name .. "::" .. class.name .. "(")
-			for key, param in ipairs(constructor.params) do
-				if key ~= #constructor.params then
-					table.insert(cpp_lines, param.type .. " " .. param.name .. ", ")
-				else
-					table.insert(cpp_lines, param.type .. " " .. param.name)
+			if #constructor.params ~= 0 then
+				for key, param in ipairs(constructor.params) do
+					if key ~= #constructor.params then
+						table.insert(cpp_lines, param.type .. " " .. param.name .. ", ")
+					else
+						table.insert(cpp_lines, param.type .. " " .. param.name)
+					end
 				end
 			end
 			table.insert(cpp_lines, ")")
@@ -203,9 +222,19 @@ function M.generate_cpp_file()
 			-- hacer coincidencia de tipos, si hubiera varias
 			-- comprobar si el nombre es similar, si contiene el texto de la variable
 			-- al parametro, se puede añadir, si no coincide con inguna, la primera que encuentre
-			if #class.attributes ~= 0 then
-				table.insert(cpp_lines, ":")
 
+			if class.inheritance ~= "" or #class.attributes ~= 0 then
+				table.insert(cpp_lines, ":")
+			end
+
+			if class.inheritance ~= "" then
+				table.insert(cpp_lines, " " .. class.inheritance .. "()")
+				if #class.attributes ~= 0 then
+					table.insert(cpp_lines, ",")
+				end
+			end
+
+			if #class.attributes ~= 0 then
 				for key, attribute in ipairs(class.attributes) do
 					if key ~= #class.attributes then
 						table.insert(cpp_lines, " " .. attribute.name .. "(), ")

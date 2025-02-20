@@ -2,6 +2,10 @@
     name: (type_identifier) @className)
 
 (class_specifier
+    (base_class_clause
+      (type_identifier)@inheritance))
+
+(class_specifier
     body: (field_declaration_list
         (declaration
             declarator: (function_declarator
