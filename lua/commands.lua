@@ -102,7 +102,7 @@ function M.get_class_info()
 			if not file_structure.classes[text_name] then
 				file_structure.classes[text_name] = {
 					name = text_name,
-					inheritance = "",
+					inheritances = {},
 					order = class_count,
 					constructors = {},
 					attributes = {},
@@ -114,9 +114,10 @@ function M.get_class_info()
 			actual_class = text_name
 		end
 
+		-- puede existir herencia multiple en c++ asi que hay que cambiarlo para que sea una lista
 		if capture_name == "inheritance" and actual_class ~= nil then
 			if file_structure.classes[actual_class] then
-				file_structure.classes[actual_class].inheritance = text_name
+				table.insert(file_structure.classes[actual_class].inheritances, text_name)
 			end
 		end
 
@@ -196,7 +197,6 @@ function M.generate_cpp_file()
 		"",
 	}
 
-	-- Abrir namespaces
 	for _, ns in ipairs(file_structure.namespaces) do
 		table.insert(cpp_lines, "namespace " .. ns .. " {")
 	end
@@ -217,20 +217,20 @@ function M.generate_cpp_file()
 			end
 			table.insert(cpp_lines, ")")
 
-			-- Hacer n sistema para meter en la inicializacion de los atributos
-			-- los parametros si hubiera
-			-- hacer coincidencia de tipos, si hubiera varias
-			-- comprobar si el nombre es similar, si contiene el texto de la variable
-			-- al parametro, se puede añadir, si no coincide con inguna, la primera que encuentre
-
-			if class.inheritance ~= "" or #class.attributes ~= 0 then
+			if #class.inheritances ~= 0 or #class.attributes ~= 0 then
 				table.insert(cpp_lines, ":")
 			end
 
-			if class.inheritance ~= "" then
-				table.insert(cpp_lines, " " .. class.inheritance .. "()")
-				if #class.attributes ~= 0 then
-					table.insert(cpp_lines, ",")
+			if #class.inheritances ~= 0 then
+				for key, inherance in ipairs(class.inheritances) do
+					if key ~= #class.inheritances then
+						table.insert(cpp_lines, " " .. inherance .. "(), ")
+					else
+						table.insert(cpp_lines, " " .. inherance .. "()")
+						if #class.attributes ~= 0 then
+							table.insert(cpp_lines, ",")
+						end
+					end
 				end
 			end
 
