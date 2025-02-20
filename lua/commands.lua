@@ -44,31 +44,96 @@ function M.get_namespaces()
 	return namespaces
 end
 
-function M.dispatch_constructor_params(params)
-	-- Hacer un split por , para soceg cuantos parametros tiene
-	-- de los splits por , hace run split por " " para separar tipo y nombre
-	-- pasarlo a un mapa que tenga type, name, tantos como parametros tenga 1 constructor
-	local paramSplitedStructure = { params = {} }
+local function isEmptyConstructor(paramsSplit)
+	return paramsSplit[1] ~= ""
+end
 
+local function splitParams(params)
 	local paramsWithOutParentesis = params:gsub("[()]", "")
 	local paramsRemovedBlanck = paramsWithOutParentesis:gsub(", ", ",")
 	local paramsSplit = vim.split(paramsRemovedBlanck, ",")
-	-- This validation is beacuse is a empty params will not added to the params structure
-	if paramsSplit[1] ~= "" then
+	return paramsSplit
+end
+
+local function dispatch_constructor_params(params)
+	local paramSplitedStructure = { params = {} }
+	local paramsSplit = splitParams(params)
+	if isEmptyConstructor(paramsSplit) then
 		for _, param in ipairs(paramsSplit) do
 			local paramSplited = vim.split(param, " ")
 			table.insert(paramSplitedStructure.params, { type = paramSplited[1], name = paramSplited[2] })
 		end
 	end
-	local file = io.open(vim.fn.expand("contact.txt"), "w") -- Guardar en home
-	if file then
-		file:write(vim.inspect(paramSplitedStructure))
-		file:close()
-	end
 	return paramSplitedStructure
 end
 
-function M.get_class_info()
+local function insert_inheritance(actual_class, capture_name, capture_value)
+	if capture_name == "inheritance" and actual_class ~= nil then
+		if actual_class then
+			table.insert(actual_class.inheritances, capture_value)
+		end
+	end
+end
+
+local function insert_constructor(actual_class, capture_name, capture_value)
+	if capture_name == "constructorParamList" and actual_class ~= nil then
+		if actual_class then
+			table.insert(actual_class.constructors, dispatch_constructor_params(capture_value))
+		end
+	end
+end
+
+local function insert_destructor(actual_class, capture_name)
+	if capture_name == "destructor" and actual_class ~= nil then
+		if actual_class then
+			actual_class.needDestructor = true
+		end
+	end
+end
+
+local function insert_method(actual_class, capture_name, capture_value)
+	if capture_name == "methodType" and actual_class ~= nil then
+		if actual_class then
+			table.insert(actual_class.methods, { type = capture_value, name = "" })
+		end
+	end
+
+	if capture_name == "methodName" and actual_class ~= nil then
+		if actual_class then
+			actual_class.methods[#actual_class.methods].name = capture_value
+		end
+	end
+end
+
+local function insert_attribute(actual_class, capture_name, capture_value)
+	if capture_name == "attributeType" and actual_class ~= nil then
+		if actual_class then
+			table.insert(actual_class.attributes, { type = capture_value, name = "" })
+		end
+	end
+
+	if capture_name == "attributeName" and actual_class ~= nil then
+		if actual_class then
+			actual_class.attributes[#actual_class.attributes].name = capture_value
+		end
+	end
+end
+
+local function test_query_result(bufnr, result, root)
+	local results = {}
+	for id, node, _ in result:iter_captures(root, bufnr) do
+		local capture_name = result.captures[id]
+		local text = vim.treesitter.get_node_text(node, bufnr)
+		table.insert(results, capture_name .. ": " .. text)
+	end
+	local file = io.open(vim.fn.expand("query_result.txt"), "w") -- Guardar en home
+	if file then
+		file:write(table.concat(results, "\n"))
+		file:close()
+	end
+end
+
+function M.get_class_structure()
 	local bufnr = vim.api.nvim_get_current_buf()
 	local parser = vim.treesitter.get_parser(bufnr)
 	local tree = parser:parse()[1]
@@ -92,16 +157,14 @@ function M.get_class_info()
 	local result = ts_query.get_query("cpp", "class")
 	local actual_class = ""
 	local class_count = 1
-	local method_combination_counter = 0
-	local constructor_param_combination_counter = 0
-	local attribute_combination_counter = 0
+
 	for id, node in result:iter_captures(root, bufnr) do
 		local capture_name = result.captures[id]
-		local text_name = vim.treesitter.get_node_text(node, bufnr)
+		local capture_value = vim.treesitter.get_node_text(node, bufnr)
 		if capture_name == "className" then
-			if not file_structure.classes[text_name] then
-				file_structure.classes[text_name] = {
-					name = text_name,
+			if not file_structure.classes[capture_value] then
+				file_structure.classes[capture_value] = {
+					name = capture_value,
 					inheritances = {},
 					order = class_count,
 					constructors = {},
@@ -111,71 +174,17 @@ function M.get_class_info()
 				}
 				class_count = class_count + 1
 			end
-			actual_class = text_name
+			actual_class = capture_value
 		end
-
-		-- puede existir herencia multiple en c++ asi que hay que cambiarlo para que sea una lista
-		if capture_name == "inheritance" and actual_class ~= nil then
-			if file_structure.classes[actual_class] then
-				table.insert(file_structure.classes[actual_class].inheritances, text_name)
-			end
-		end
-
-		if capture_name == "constructorParamList" and actual_class ~= nil then
-			if file_structure.classes[actual_class] then
-				local constructors = file_structure.classes[actual_class].constructors
-				table.insert(constructors, M.dispatch_constructor_params(text_name))
-			end
-		end
-
-		if capture_name == "destructor" and actual_class ~= nil then
-			if file_structure.classes[actual_class] then
-				file_structure.classes[actual_class].needDestructor = true
-			end
-		end
-
-		if capture_name == "methodType" and actual_class ~= nil then
-			if file_structure.classes[actual_class] and method_combination_counter == 0 then
-				table.insert(file_structure.classes[actual_class].methods, { type = text_name, name = "" })
-				method_combination_counter = method_combination_counter + 1
-			end
-		end
-
-		if capture_name == "methodName" and actual_class ~= nil then
-			if file_structure.classes[actual_class] and method_combination_counter == 1 then
-				file_structure.classes[actual_class].methods[#file_structure.classes[actual_class].methods].name =
-					text_name
-				method_combination_counter = 0
-			end
-		end
-
-		if capture_name == "attributeType" and actual_class ~= nil then
-			if file_structure.classes[actual_class] and attribute_combination_counter == 0 then
-				table.insert(file_structure.classes[actual_class].attributes, { type = text_name, name = "" })
-				attribute_combination_counter = attribute_combination_counter + 1
-			end
-		end
-
-		if capture_name == "attributeName" and actual_class ~= nil then
-			if file_structure.classes[actual_class] and attribute_combination_counter == 1 then
-				file_structure.classes[actual_class].attributes[#file_structure.classes[actual_class].attributes].name =
-					text_name
-				attribute_combination_counter = 0
-			end
-		end
+		insert_inheritance(file_structure.classes[actual_class], capture_name, capture_value)
+		insert_constructor(file_structure.classes[actual_class], capture_name, capture_value)
+		insert_destructor(file_structure.classes[actual_class], capture_name)
+		insert_method(file_structure.classes[actual_class], capture_name, capture_value)
+		insert_attribute(file_structure.classes[actual_class], capture_name, capture_value)
 	end
-	local results = {}
 
-	for id, node, metadata in result:iter_captures(root, bufnr) do
-		local capture_name = result.captures[id]
-		local text = vim.treesitter.get_node_text(node, bufnr)
-		table.insert(results, capture_name .. ": " .. text)
-	end
-	local file = io.open(vim.fn.expand("testing.txt"), "w") -- Guardar en home
-	if file then
-		file:write(table.concat(results, "\n"))
-		file:close()
-	end
+	test_query_result(bufnr, result, root)
+
 	table.sort(file_structure.classes, function(a, b)
 		return a.order < b.order
 	end)
@@ -183,7 +192,7 @@ function M.get_class_info()
 end
 
 function M.generate_cpp_file()
-	local file_structure = M.get_class_info()
+	local file_structure = M.get_class_structure()
 	if #file_structure.classes <= 0 then
 		print("No se encontró ninguna clase en el archivo actual.")
 		return
