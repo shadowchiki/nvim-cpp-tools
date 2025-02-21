@@ -19,31 +19,6 @@ function M.remove_unused_includes()
 	end
 end
 
-function M.get_namespaces()
-	local bufnr = vim.api.nvim_get_current_buf()
-	local parser = vim.treesitter.get_parser(bufnr)
-	local tree = parser:parse()[1]
-	local root = tree:root()
-	local namespaces = {}
-
-	local queryNested = "(nested_namespace_specifier) @namespace"
-	local query = "(namespace_definition name: (namespace_identifier) @namespace)"
-	local result = vim.treesitter.query.parse("cpp", queryNested)
-	for _, node in result:iter_captures(root, bufnr) do
-		local capture_text = vim.treesitter.get_node_text(node, bufnr)
-		table.insert(namespaces, capture_text)
-	end
-
-	if #namespaces == 0 then
-		result = vim.treesitter.query.parse("cpp", query)
-		for _, node in result:iter_captures(root, bufnr) do
-			table.insert(namespaces, vim.treesitter.get_node_text(node, bufnr))
-		end
-	end
-
-	return namespaces
-end
-
 local function isEmptyConstructor(paramsSplit)
 	return paramsSplit[1] ~= ""
 end
@@ -137,7 +112,6 @@ function M.get_class_structure()
 	local bufnr = vim.api.nvim_get_current_buf()
 	local parser = vim.treesitter.get_parser(bufnr)
 	local tree = parser:parse()[1]
-
 	local root = tree:root()
 
 	local file_structure = {
@@ -152,27 +126,27 @@ function M.get_class_structure()
 		},
 	}
 
-	file_structure.namespaces = M.get_namespaces()
-
 	local result = ts_query.get_query("cpp", "class")
 	local actual_class = ""
-	local class_count = 1
 
 	for id, node in result:iter_captures(root, bufnr) do
 		local capture_name = result.captures[id]
 		local capture_value = vim.treesitter.get_node_text(node, bufnr)
+
+		if capture_name == "namespace" then
+			table.insert(file_structure.namespaces, capture_value)
+		end
+
 		if capture_name == "className" then
 			if not file_structure.classes[capture_value] then
 				file_structure.classes[capture_value] = {
 					name = capture_value,
 					inheritances = {},
-					order = class_count,
 					constructors = {},
 					attributes = {},
 					methods = {},
 					needDestructor = false,
 				}
-				class_count = class_count + 1
 			end
 			actual_class = capture_value
 		end
@@ -185,97 +159,113 @@ function M.get_class_structure()
 
 	test_query_result(bufnr, result, root)
 
-	table.sort(file_structure.classes, function(a, b)
-		return a.order < b.order
-	end)
 	return file_structure
 end
 
-function M.generate_cpp_file()
-	local file_structure = M.get_class_structure()
-	if #file_structure.classes <= 0 then
-		print("No se encontró ninguna clase en el archivo actual.")
-		return
-	end
-
-	local h_filename = vim.api.nvim_buf_get_name(0)
-	local cpp_filename = h_filename:gsub("%.h$", ".cpp"):gsub("%.hpp$", ".cpp")
-
-	local cpp_lines = {
-		'#include "' .. h_filename:match("([^/]+)$") .. '"',
-		"",
-	}
-
-	for _, ns in ipairs(file_structure.namespaces) do
+local function process_namespaces(cpp_lines, namespaces)
+	for _, ns in ipairs(namespaces) do
 		table.insert(cpp_lines, "namespace " .. ns .. " {")
 	end
+end
 
-	table.insert(cpp_lines, "\n")
+local function process_cosntructor(class, cpp_lines)
+	for _, constructor in ipairs(class.constructors) do
+		table.insert(cpp_lines, class.name .. "::" .. class.name .. "(")
+		if #constructor.params ~= 0 then
+			for key, param in ipairs(constructor.params) do
+				if key ~= #constructor.params then
+					table.insert(cpp_lines, param.type .. " " .. param.name .. ", ")
+				else
+					table.insert(cpp_lines, param.type .. " " .. param.name)
+				end
+			end
+		end
+		table.insert(cpp_lines, ")")
 
-	for _, class in pairs(file_structure.classes) do
-		for _, constructor in ipairs(class.constructors) do
-			table.insert(cpp_lines, class.name .. "::" .. class.name .. "(")
-			if #constructor.params ~= 0 then
-				for key, param in ipairs(constructor.params) do
-					if key ~= #constructor.params then
-						table.insert(cpp_lines, param.type .. " " .. param.name .. ", ")
-					else
-						table.insert(cpp_lines, param.type .. " " .. param.name)
+		if #class.inheritances ~= 0 or #class.attributes ~= 0 then
+			table.insert(cpp_lines, ":")
+		end
+
+		if #class.inheritances ~= 0 then
+			for key, inherance in ipairs(class.inheritances) do
+				if key ~= #class.inheritances then
+					table.insert(cpp_lines, " " .. inherance .. "(), ")
+				else
+					table.insert(cpp_lines, " " .. inherance .. "()")
+					if #class.attributes ~= 0 then
+						table.insert(cpp_lines, ",")
 					end
 				end
 			end
-			table.insert(cpp_lines, ")")
+		end
 
-			if #class.inheritances ~= 0 or #class.attributes ~= 0 then
-				table.insert(cpp_lines, ":")
-			end
-
-			if #class.inheritances ~= 0 then
-				for key, inherance in ipairs(class.inheritances) do
-					if key ~= #class.inheritances then
-						table.insert(cpp_lines, " " .. inherance .. "(), ")
-					else
-						table.insert(cpp_lines, " " .. inherance .. "()")
-						if #class.attributes ~= 0 then
-							table.insert(cpp_lines, ",")
-						end
-					end
+		if #class.attributes ~= 0 then
+			for key, attribute in ipairs(class.attributes) do
+				if key ~= #class.attributes then
+					table.insert(cpp_lines, " " .. attribute.name .. "(), ")
+				else
+					table.insert(cpp_lines, " " .. attribute.name .. "()")
 				end
 			end
+		end
 
-			if #class.attributes ~= 0 then
-				for key, attribute in ipairs(class.attributes) do
-					if key ~= #class.attributes then
-						table.insert(cpp_lines, " " .. attribute.name .. "(), ")
-					else
-						table.insert(cpp_lines, " " .. attribute.name .. "()")
-					end
-				end
-			end
-
-			table.insert(cpp_lines, "{}\n")
-		end
-		if class.needDestructor then
-			table.insert(cpp_lines, class.name .. "::" .. "~" .. class.name .. "()" .. "{")
-			table.insert(cpp_lines, "}\n")
-		end
-		for _, method in ipairs(class.methods) do
-			table.insert(cpp_lines, method.type .. " " .. class.name .. "::" .. method.name .. "{")
-			table.insert(cpp_lines, "}\n")
-		end
+		table.insert(cpp_lines, "{}\n")
 	end
+end
 
+local function process_destructor(class, cpp_lines)
+	if class.needDestructor then
+		table.insert(cpp_lines, class.name .. "::" .. "~" .. class.name .. "()" .. "{")
+		table.insert(cpp_lines, "}\n")
+	end
+end
+
+local function process_methods(class, cpp_lines)
+	for _, method in ipairs(class.methods) do
+		table.insert(cpp_lines, method.type .. " " .. class.name .. "::" .. method.name .. "{")
+		table.insert(cpp_lines, "}\n")
+	end
+end
+
+local function close_namespaces(cpp_lines, file_structure)
 	for _ = 1, #file_structure.namespaces do
 		table.insert(cpp_lines, "}")
 	end
+end
 
+local function create_cpp_file(cpp_lines, h_filename)
+	local cpp_filename = h_filename:gsub("%.h$", ".cpp"):gsub("%.hpp$", ".cpp")
 	local file = io.open(cpp_filename, "w")
 	if file then
 		file:write(table.concat(cpp_lines, "\n"))
 		file:close()
 		vim.cmd("edit " .. cpp_filename)
+		vim.lsp.buf.format()
 	else
-		print("Error al crear el archivo " .. cpp_filename)
+		print("Cant create file: " .. cpp_filename)
 	end
+end
+
+function M.generate_cpp_file()
+	local file_structure = M.get_class_structure()
+	if #file_structure.classes <= 0 then
+		print("No classes in the file")
+		return
+	end
+	local h_filename = vim.api.nvim_buf_get_name(0)
+	local cpp_lines = {
+		'#include "' .. h_filename:match("([^/]+)$") .. '"',
+		"",
+	}
+
+	process_namespaces(cpp_lines, file_structure.namespaces)
+	table.insert(cpp_lines, "\n")
+	for _, class in pairs(file_structure.classes) do
+		process_cosntructor(class, cpp_lines)
+		process_destructor(class, cpp_lines)
+		process_methods(class, cpp_lines)
+	end
+	close_namespaces(cpp_lines, file_structure)
+	create_cpp_file(cpp_lines, h_filename)
 end
 return M

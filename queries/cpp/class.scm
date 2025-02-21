@@ -1,3 +1,5 @@
+(nested_namespace_specifier) @namespace
+(namespace_definition name: (namespace_identifier) @namespace)
 (class_specifier
     name: (type_identifier) @className)
 
@@ -28,3 +30,4 @@
 (field_declaration
     type: (qualified_identifier) @attributeType
     declarator: (field_identifier) @attributeName)
+
