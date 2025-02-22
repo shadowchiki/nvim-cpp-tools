@@ -28,6 +28,6 @@
             declarator: (function_declarator) @methodName)))
 
 (field_declaration
-    type: (qualified_identifier) @attributeType
+    type: [(qualified_identifier)  (type_identifier)] @attributeType
     declarator: (field_identifier) @attributeName)
 

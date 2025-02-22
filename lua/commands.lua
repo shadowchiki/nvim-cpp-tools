@@ -36,7 +36,7 @@ local function dispatch_constructor_params(params)
 	if isEmptyConstructor(paramsSplit) then
 		for _, param in ipairs(paramsSplit) do
 			local paramSplited = vim.split(param, " ")
-			table.insert(paramSplitedStructure.params, { type = paramSplited[1], name = paramSplited[2] })
+			table.insert(paramSplitedStructure.params, { type = paramSplited[1], name = paramSplited[2], used = false })
 		end
 	end
 	return paramSplitedStructure
@@ -94,14 +94,8 @@ local function insert_attribute(actual_class, capture_name, capture_value)
 	end
 end
 
-local function test_query_result(bufnr, result, root)
-	local results = {}
-	for id, node, _ in result:iter_captures(root, bufnr) do
-		local capture_name = result.captures[id]
-		local text = vim.treesitter.get_node_text(node, bufnr)
-		table.insert(results, capture_name .. ": " .. text)
-	end
-	local file = io.open(vim.fn.expand("query_result.txt"), "w") -- Guardar en home
+local function create_test_file(file_name, results)
+	local file = io.open(vim.fn.expand(file_name), "w") -- Guardar en home
 	if file then
 		file:write(table.concat(results, "\n"))
 		file:close()
@@ -157,7 +151,13 @@ function M.get_class_structure()
 		insert_attribute(file_structure.classes[actual_class], capture_name, capture_value)
 	end
 
-	test_query_result(bufnr, result, root)
+	local results = {}
+	for id, node, _ in result:iter_captures(root, bufnr) do
+		local capture_name = result.captures[id]
+		local text = vim.treesitter.get_node_text(node, bufnr)
+		table.insert(results, capture_name .. ": " .. text)
+	end
+	create_test_file("query_result.txt", results)
 
 	return file_structure
 end
@@ -168,15 +168,73 @@ local function process_namespaces(cpp_lines, namespaces)
 	end
 end
 
-local function process_cosntructor(class, cpp_lines)
+local function contains(attribute, param)
+	local big_string = ""
+	local small_string = ""
+	if #attribute >= #param then
+		big_string = attribute
+		small_string = param
+	else
+		big_string = param
+		small_string = attribute
+	end
+	return string.find(string.lower(big_string), string.lower(small_string))
+end
+
+local function find_attribute_by_type_and_name(attribute, params)
+	local inicialize_value = ""
+	local iterator = 1
+	local finded = false
+	while iterator <= #params and finded == false do
+		local param = params[iterator]
+		if contains(attribute.type, param.type) and contains(attribute.name, param.name) and param.used == false then
+			inicialize_value = param.name
+			param.used = true
+			finded = true
+		end
+		iterator = iterator + 1
+	end
+	return inicialize_value
+end
+
+local function find_attribute_by_type(attribute, params)
+	local inicialize_value = ""
+	local iterator = 1
+	local finded = false
+	while iterator <= #params and finded == false do
+		local param = params[iterator]
+		if contains(attribute.type, param.type) and param.used == false then
+			inicialize_value = param.name
+			param.used = true
+			finded = true
+		end
+		iterator = iterator + 1
+	end
+	return inicialize_value
+end
+
+local function inicialize_attribute_with_constructor_param(attribute, params)
+	if #params == 0 then
+		return ""
+	end
+	local inicialize_value = find_attribute_by_type_and_name(attribute, params)
+	if inicialize_value == "" then
+		inicialize_value = find_attribute_by_type(attribute, params)
+	end
+	return inicialize_value
+end
+
+local function process_constructor(class, cpp_lines)
+	local result = {}
+	table.insert(result, class.name)
 	for _, constructor in ipairs(class.constructors) do
 		table.insert(cpp_lines, class.name .. "::" .. class.name .. "(")
 		if #constructor.params ~= 0 then
 			for key, param in ipairs(constructor.params) do
+				table.insert(cpp_lines, param.type .. " " .. param.name)
 				if key ~= #constructor.params then
-					table.insert(cpp_lines, param.type .. " " .. param.name .. ", ")
+					table.insert(cpp_lines, ", ")
 				else
-					table.insert(cpp_lines, param.type .. " " .. param.name)
 				end
 			end
 		end
@@ -188,10 +246,10 @@ local function process_cosntructor(class, cpp_lines)
 
 		if #class.inheritances ~= 0 then
 			for key, inherance in ipairs(class.inheritances) do
+				table.insert(cpp_lines, " " .. inherance .. "()")
 				if key ~= #class.inheritances then
-					table.insert(cpp_lines, " " .. inherance .. "(), ")
+					table.insert(cpp_lines, ", ")
 				else
-					table.insert(cpp_lines, " " .. inherance .. "()")
 					if #class.attributes ~= 0 then
 						table.insert(cpp_lines, ",")
 					end
@@ -201,15 +259,23 @@ local function process_cosntructor(class, cpp_lines)
 
 		if #class.attributes ~= 0 then
 			for key, attribute in ipairs(class.attributes) do
+				table.insert(cpp_lines, " " .. attribute.name .. "(")
+				local param_to_attribute = inicialize_attribute_with_constructor_param(attribute, constructor.params)
+					.. ")"
+				table.insert(result, param_to_attribute)
+				table.insert(cpp_lines, param_to_attribute)
 				if key ~= #class.attributes then
-					table.insert(cpp_lines, " " .. attribute.name .. "(), ")
-				else
-					table.insert(cpp_lines, " " .. attribute.name .. "()")
+					table.insert(cpp_lines, ", ")
 				end
 			end
 		end
 
 		table.insert(cpp_lines, "{}\n")
+	end
+	local file = io.open("constructor_process.txt", "w")
+	if file then
+		file:write(table.concat(result, "\n"))
+		file:close()
 	end
 end
 
@@ -261,7 +327,7 @@ function M.generate_cpp_file()
 	process_namespaces(cpp_lines, file_structure.namespaces)
 	table.insert(cpp_lines, "\n")
 	for _, class in pairs(file_structure.classes) do
-		process_cosntructor(class, cpp_lines)
+		process_constructor(class, cpp_lines)
 		process_destructor(class, cpp_lines)
 		process_methods(class, cpp_lines)
 	end
