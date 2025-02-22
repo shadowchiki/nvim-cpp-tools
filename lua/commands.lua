@@ -78,6 +78,12 @@ local function insert_method(actual_class, capture_name, capture_value)
 			actual_class.methods[#actual_class.methods].name = capture_value
 		end
 	end
+
+	if capture_name == "methodNameRemove" then
+		if actual_class then
+			table.remove(actual_class.methods, #actual_class.methods)
+		end
+	end
 end
 
 local function insert_attribute(actual_class, capture_name, capture_value)
@@ -298,6 +304,9 @@ local function close_namespaces(cpp_lines, file_structure)
 		table.insert(cpp_lines, "}")
 	end
 end
+
+local telescope = require("telescope")
+telescope.load_extension("file_browser")
 
 local function create_cpp_file(cpp_lines, h_filename)
 	local cpp_filename = h_filename:gsub("%.h$", ".cpp"):gsub("%.hpp$", ".cpp")

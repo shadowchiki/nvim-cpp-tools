@@ -27,7 +27,15 @@
             type: [(qualified_identifier) (primitive_type)] @methodType
             declarator: (function_declarator) @methodName)))
 
+(class_specifier
+    name: (type_identifier)
+    body: (field_declaration_list
+        (field_declaration
+            declarator: (function_declarator) @methodNameRemove
+            default_value: (number_literal) @virtual (#eq? @virtual  "0"))))
+
 (field_declaration
     type: [(qualified_identifier)  (type_identifier)] @attributeType
     declarator: (field_identifier) @attributeName)
+
 
