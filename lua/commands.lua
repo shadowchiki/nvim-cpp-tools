@@ -305,9 +305,6 @@ local function close_namespaces(cpp_lines, file_structure)
 	end
 end
 
-local telescope = require("telescope")
-telescope.load_extension("file_browser")
-
 local function create_cpp_file(cpp_lines, h_filename)
 	local cpp_filename = h_filename:gsub("%.h$", ".cpp"):gsub("%.hpp$", ".cpp")
 	local file = io.open(cpp_filename, "w")
