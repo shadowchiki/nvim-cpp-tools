@@ -34,7 +34,7 @@ function M.setup()
 			)
 			vim.api.nvim_buf_create_user_command(
 				0,
-				"RemoveUnusedIncludes",
+				"GenerateMethodImplementation",
 				generate_method_implementation.generate_method_implementation,
 				{ desc = "Gnerate Method Implementation" }
 			)
