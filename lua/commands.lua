@@ -295,7 +295,7 @@ end
 local function process_methods(class, cpp_lines)
 	for _, method in ipairs(class.methods) do
 		table.insert(cpp_lines, method.type .. " " .. class.name .. "::" .. method.name .. "{")
-		table.insert(cpp_lines, "}\n")
+		table.insert(cpp_lines, "}")
 	end
 end
 
@@ -340,4 +340,112 @@ function M.generate_cpp_file()
 	close_namespaces(cpp_lines, file_structure)
 	create_cpp_file(cpp_lines, h_filename)
 end
+
+function M.generate_method_implementation()
+	local bufnr = vim.api.nvim_get_current_buf()
+	local parser = vim.treesitter.get_parser(bufnr)
+	local tree = parser:parse()[1]
+	local root = tree:root()
+
+	local vstart = vim.fn.getpos(".")
+	local line_selected = vstart[2] - 1
+
+	local class = {
+		methods = {},
+	}
+
+	local result = ts_query.get_query("cpp", "class")
+	for id, node in result:iter_captures(root, bufnr, line_selected, line_selected + 1) do
+		local capture_name = result.captures[id]
+		local capture_value = vim.treesitter.get_node_text(node, bufnr)
+
+		if capture_name == "className" then
+			class = {
+				name = capture_value,
+				methods = {},
+			}
+		end
+		insert_method(class, capture_name, capture_value)
+	end
+	-- TODO: El nombre hay que sacarlo de la estructura de clases que toque
+	class.name = "ClassName"
+	local h_filename = vim.api.nvim_buf_get_name(0)
+	local cpp_filename = h_filename:gsub("%.h$", ".cpp"):gsub("%.hpp$", ".cpp")
+	vim.cmd("edit " .. cpp_filename)
+	bufnr = vim.api.nvim_get_current_buf()
+	parser = vim.treesitter.get_parser(bufnr)
+	tree = parser:parse()[1]
+	root = tree:root()
+	-- print(vim.api.nvim_buf_get_name(bufnr))
+
+	local file_structure = {
+		classes = {},
+	}
+	local cpp_result = ts_query.get_query("cpp", "implementation_file")
+	local results = {}
+	for id, node, _ in cpp_result:iter_captures(root, bufnr) do
+		local capture_name = cpp_result.captures[id]
+		local text = vim.treesitter.get_node_text(node, bufnr)
+		table.insert(results, capture_name .. ": " .. text)
+	end
+	create_test_file("cppfile.txt", results)
+
+	local actual_class = ""
+	for id, node in cpp_result:iter_captures(root, bufnr) do
+		local capture_name = cpp_result.captures[id]
+		local capture_value = vim.treesitter.get_node_text(node, bufnr)
+		local start_line, start_col, end_line, end_col = node:range()
+
+		if capture_name == "className" then
+			if not file_structure.classes[capture_value] then
+				file_structure.classes[capture_value] = {
+					name = capture_value,
+					methods = {},
+				}
+			end
+			actual_class = capture_value
+		end
+		if capture_name == "methodType" and file_structure ~= nil then
+			if file_structure then
+				table.insert(
+					file_structure.classes[actual_class].methods,
+					{ type = capture_value, name = "", endline = 0 }
+				)
+			end
+		end
+
+		if capture_name == "methodName" and file_structure ~= nil then
+			if file_structure then
+				file_structure.classes[actual_class].methods[#file_structure.classes[actual_class].methods].name =
+					capture_value
+			end
+		end
+		if capture_name == "methodParameters" and file_structure ~= nil then
+			if file_structure then
+				local methodName =
+					file_structure.classes[actual_class].methods[#file_structure.classes[actual_class].methods].name
+				methodName = methodName .. capture_value
+			end
+		end
+		if capture_name == "completeFunction" and file_structure ~= nil then
+			if file_structure then
+				file_structure.classes[actual_class].methods[#file_structure.classes[actual_class].methods].endline = end_line
+					+ 1
+			end
+		end
+	end
+	local cpp_lines = {}
+	process_methods(class, cpp_lines)
+	-- TODO: Hay que crear un mecanismo para saber comparar las funciones entre el cpp y el .hpp
+	-- para saber en que orden meter el metodo en el cpp
+	local methods = file_structure.classes["ClassName"].methods
+	vim.api.nvim_buf_set_lines(
+		bufnr,
+		file_structure.classes["ClassName"].methods[#methods].endline,
+		file_structure.classes["ClassName"].methods[#methods].endline,
+		false,
+		cpp_lines
+	)
+end
+
 return M

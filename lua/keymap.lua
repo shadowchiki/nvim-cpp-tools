@@ -14,6 +14,12 @@ function M.setup()
 			vim.keymap.set("n", "gh", "<cmd>ClangdSwitchSourceHeader<CR>", { desc = "Swap .hpp/.cpp files" })
 			vim.keymap.set(
 				"n",
+				"<leader>cI",
+				commands.generate_method_implementation,
+				{ desc = "Generate Method Implementation", noremap = false }
+			)
+			vim.keymap.set(
+				"n",
 				"<Leader>ci",
 				commands.generate_cpp_file,
 				{ desc = "Generate Implementation", noremap = true, silent = true }
