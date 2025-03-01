@@ -25,7 +25,7 @@
     body: (field_declaration_list
         (field_declaration
             type: [(qualified_identifier) (primitive_type)] @methodType
-            declarator: (function_declarator) @methodName)))
+            declarator: (function_declarator) @methodName)@methodLine))
 
 (class_specifier
     name: (type_identifier)
