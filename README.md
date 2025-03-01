@@ -2,7 +2,7 @@
 
 Nvim-Cpp-Tools is a plugin to give more functionality than Clangd can do natively
 With this Plugin you can auto generate .cpp imeplementation from a .hpp, hxx, h file
-Remove unused includes
+Remove unused includes.
 This plugin is developed using [Treesitter](https://github.com/nvim-treesitter/nvim-treesitter)
 
 ## Index
@@ -11,15 +11,35 @@ This plugin is developed using [Treesitter](https://github.com/nvim-treesitter/n
 2. [Configure](#configure)
 3. [Commands](#commands)
 4. [Default keymaps](#default-keymaps)
-5. [Future features](#future-features)
+5. [Examples](#examples)
 
 ## Requirements
 
+These are the requirements of the functionalities that I would like the plugin to have
+This is what i expect, if you have some suggestion contact me via mail.
+
+### General Requirements
+
+- [x] Must be able to remove unused includes.
+
+### Auto generate implementations of header file
+
+- [ ] Must be able to allow to implement the inheritance methods that could have override the pure virtual parent methods.
+- [x] Read attributes and set them to be automatically initialized in the constructor as if it had a parent.
+- [ ] Template classes
+- [ ] Ask you in which path you want to create the file.
+- [x] Initialize the attributes of the class with the parameters of the constructor, the search must be by type, if there are several parameters of that type, make a comparison by name, if it does not contain the text, the first attribute found of the same type is put.
+- [ ] Generate getters and setters
+- [x] Select a method and generate it.
+
+### Refactoring requirements
+
+- [ ] Allows to select a method and generate a local variable or attribute from the return of the function.
+- [ ] Allows to mark (v) a block of code and export it in a function intuiting what kind of
+
 ## Configure
 
-Configuration with Lua
-
-### LazyVim Configuration
+### LazyVim
 
 ```lua
 {
@@ -49,4 +69,4 @@ Configuration with Lua
 | &lt;leader&gt;ci | :GenerateCppImplementation    |
 | &lt;leader&gt;cI | :GenerateMethodImplementation |
 
-## Future Features
+## Examples
