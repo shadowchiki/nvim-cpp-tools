@@ -43,10 +43,10 @@ Configuration with Lua
 
 ## Default keymaps
 
-| Keymap     | Command                       |
-| ---------- | ----------------------------- |
-| <leader>co | :RemoveUnusedIncludes         |
-| <leader>ci | :GenerateCppImplementation    |
-| <leader>cI | :GenerateMethodImplementation |
+| Keymap       | Command                       |
+| ------------ | ----------------------------- |
+| '<leader>co' | :RemoveUnusedIncludes         |
+| '<leader>ci' | :GenerateCppImplementation    |
+| '<leader>cI' | :GenerateMethodImplementation |
 
 ## Future Features
