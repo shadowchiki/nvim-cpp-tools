@@ -35,7 +35,9 @@ This is what i expect, if you have some suggestion contact me via mail.
 ### Refactoring requirements
 
 - [ ] Allows to select a method and generate a local variable or attribute from the return of the function.
-- [ ] Allows to mark (v) a block of code and export it in a function intuiting what kind of
+- [ ] Allows to mark (v) a block of code and export it in a function intuiting what kind of return is needed.
+- [ ] It must allow that if a method returns a variable, it allows to generate a variable of the return type with a default name.
+- [ ] The plugin must be able to refactor a class, change any comment of the class and put the new name in all the classes that use it.
 
 ## Configure
 
