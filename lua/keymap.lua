@@ -4,7 +4,7 @@ function M.setup()
 	vim.api.nvim_create_autocmd("FileType", {
 		pattern = { "cpp", "c", "cc", "h", "hpp" },
 		callback = function()
-			local commands = require("commands")
+			local generate_method_implementation = require("generate_method_implementation")
 			local unused_includes = require("remove_unused_includes")
 			local generate_cpp_file = require("generate_cpp_file")
 			vim.keymap.set(
@@ -17,7 +17,7 @@ function M.setup()
 			vim.keymap.set(
 				"n",
 				"<leader>cI",
-				commands.generate_method_implementation,
+				generate_method_implementation.generate_method_implementation,
 				{ desc = "Generate Method Implementation", noremap = false }
 			)
 			vim.keymap.set(
@@ -31,6 +31,12 @@ function M.setup()
 				"RemoveUnusedIncludes",
 				unused_includes.remove_unused_includes,
 				{ desc = "Remove unused includes" }
+			)
+			vim.api.nvim_buf_create_user_command(
+				0,
+				"RemoveUnusedIncludes",
+				generate_method_implementation.generate_method_implementation,
+				{ desc = "Gnerate Method Implementation" }
 			)
 			vim.api.nvim_buf_create_user_command(
 				0,

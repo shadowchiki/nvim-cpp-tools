@@ -5,7 +5,7 @@ local insert_file_structure = require("insert_file_structure")
 local file_utils = require("file_utils")
 
 function M.generate_cpp_file()
-	local file_structure = insert_file_structure.get_class_structure()
+	local file_structure = insert_file_structure.get_class_structure("class")
 	if #file_structure.classes <= 0 then
 		print("No classes in the file")
 		return

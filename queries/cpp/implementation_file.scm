@@ -2,6 +2,8 @@
   declarator: (function_declarator
                 declarator: (qualified_identifier
                               scope: (namespace_identifier)@className)))
+(function_definition
+  type: [(qualified_identifier) (primitive_type)]) @methodLine
 
 (function_definition 
   type: [(qualified_identifier) (primitive_type)]
@@ -15,5 +17,3 @@
                 declarator: (qualified_identifier
                               name: (identifier)@methodName)))
 
-(function_definition
-  type: [(qualified_identifier) (primitive_type)]) @completeFunction

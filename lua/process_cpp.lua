@@ -114,11 +114,6 @@ function M.process_constructor(class, cpp_lines)
 
 		table.insert(cpp_lines, "{}\n")
 	end
-	local file = io.open("constructor_process.txt", "w")
-	if file then
-		file:write(table.concat(result, "\n"))
-		file:close()
-	end
 end
 
 function M.process_destructor(class, cpp_lines)

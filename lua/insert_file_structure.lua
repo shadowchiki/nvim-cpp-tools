@@ -2,6 +2,17 @@ local M = {}
 
 local ts_query = require("nvim-treesitter.query")
 
+function M.isAlredyImplemented(file_structure, class)
+	local isAlredyImplemented = false
+	for _, method in ipairs(file_structure.classes[class.name].methods) do
+		if method.name == class.methods[#class.methods].name and method.type == class.methods[#class.methods].type then
+			isAlredyImplemented = true
+			break
+		end
+	end
+	return isAlredyImplemented
+end
+
 function M.isEmptyConstructor(paramsSplit)
 	return paramsSplit[1] ~= ""
 end
@@ -49,7 +60,7 @@ function M.insert_destructor(actual_class, capture_name)
 	end
 end
 
-function M.insert_method(actual_class, capture_name, capture_value, node_line)
+function M.insert_method(actual_class, capture_name, capture_value, start_row, end_row)
 	if capture_name == "methodType" and actual_class ~= nil then
 		if actual_class then
 			actual_class.methods[#actual_class.methods].type = capture_value
@@ -64,7 +75,17 @@ function M.insert_method(actual_class, capture_name, capture_value, node_line)
 
 	if capture_name == "methodLine" and actual_class ~= nil then
 		if actual_class then
-			table.insert(actual_class.methods, { type = "", name = "", line = node_line + 1 })
+			table.insert(
+				actual_class.methods,
+				{ type = "", name = "", startline = start_row + 1, endline = end_row + 1 }
+			)
+		end
+	end
+
+	if capture_name == "methodParameters" and actual_class ~= nil then
+		if actual_class then
+			local methodName = actual_class.methods[#actual_class.methods].name
+			methodName = methodName .. capture_value
 		end
 	end
 
@@ -106,7 +127,7 @@ function M.get_class_name_from_method(hpp_classes, method_selected)
 			if
 				method.type == method_selected.type
 				and method.name == method_selected.name
-				and method.line == method_selected.line
+				and method.startline == method_selected.startline
 			then
 				className = class.name
 				break
@@ -116,7 +137,7 @@ function M.get_class_name_from_method(hpp_classes, method_selected)
 	return className
 end
 
-function M.get_class_structure()
+function M.get_class_structure(query)
 	local bufnr = vim.api.nvim_get_current_buf()
 	local parser = vim.treesitter.get_parser(bufnr)
 	local tree = parser:parse()[1]
@@ -134,12 +155,13 @@ function M.get_class_structure()
 		},
 	}
 
-	local result = ts_query.get_query("cpp", "class")
+	local result = ts_query.get_query("cpp", query)
 	local actual_class = ""
 
 	for id, node in result:iter_captures(root, bufnr) do
 		local capture_name = result.captures[id]
 		local capture_value = vim.treesitter.get_node_text(node, bufnr)
+		local start_row, _, end_row, _ = node:range()
 
 		if capture_name == "namespace" then
 			table.insert(file_structure.namespaces, capture_value)
@@ -161,17 +183,9 @@ function M.get_class_structure()
 		M.insert_inheritance(file_structure.classes[actual_class], capture_name, capture_value)
 		M.insert_constructor(file_structure.classes[actual_class], capture_name, capture_value)
 		M.insert_destructor(file_structure.classes[actual_class], capture_name)
-		M.insert_method(file_structure.classes[actual_class], capture_name, capture_value, node:range())
+		M.insert_method(file_structure.classes[actual_class], capture_name, capture_value, start_row, end_row)
 		M.insert_attribute(file_structure.classes[actual_class], capture_name, capture_value)
 	end
-
-	local results = {}
-	for id, node, _ in result:iter_captures(root, bufnr) do
-		local capture_name = result.captures[id]
-		local text = vim.treesitter.get_node_text(node, bufnr)
-		table.insert(results, capture_name .. ": " .. text)
-	end
-	M.create_test_file("query_result.txt", results)
 
 	return file_structure
 end
