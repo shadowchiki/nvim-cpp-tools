@@ -126,7 +126,7 @@ end
 function M.process_methods(class, cpp_lines)
 	for _, method in ipairs(class.methods) do
 		table.insert(cpp_lines, method.type .. " " .. class.name .. "::" .. method.name .. "{")
-		table.insert(cpp_lines, "}")
+		table.insert(cpp_lines, "}\n")
 	end
 end
 
