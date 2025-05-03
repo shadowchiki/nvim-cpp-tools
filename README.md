@@ -12,6 +12,7 @@ This plugin is developed using [Treesitter](https://github.com/nvim-treesitter/n
 3. [Commands](#commands)
 4. [Default keymaps](#default-keymaps)
 5. [Examples](#examples)
+6. [Known Bugs](#known-bugs)
 
 ## Requirements
 
@@ -31,6 +32,8 @@ This is what i expect, if you have some suggestion contact me via mail.
 - [x] Initialize the attributes of the class with the parameters of the constructor, the search must be by type, if there are several parameters of that type, make a comparison by name, if it does not contain the text, the first attribute found of the same type is put.
 - [ ] Generate getters and setters
 - [x] Select a method and generate it.
+- [ ] Regenerate all Constructors
+- [ ] Regenerate a single Constructor
 
 ### Refactoring requirements
 
@@ -72,3 +75,7 @@ This is what i expect, if you have some suggestion contact me via mail.
 | &lt;leader&gt;cI | :GenerateMethodImplementation |
 
 ## Examples
+
+## Known bugs
+
+- [ ] When try to generate a method with override, the implementation get override mark too

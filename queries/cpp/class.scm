@@ -1,4 +1,4 @@
-(nested_namespace_specifier) @namespace
+(namespace_definition name: (nested_namespace_specifier) @namespace)
 (namespace_definition name: (namespace_identifier) @namespace)
 (class_specifier
     name: (type_identifier) @className)
