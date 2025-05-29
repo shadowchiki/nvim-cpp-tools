@@ -28,12 +28,13 @@ This is what i expect, if you have some suggestion contact me via mail.
 - [ ] Must be able to allow to implement the inheritance methods that could have override the pure virtual parent methods.
 - [x] Read attributes and set them to be automatically initialized in the constructor as if it had a parent.
 - [ ] Template classes
-- [ ] Ask you in which path you want to create the file.
 - [x] Initialize the attributes of the class with the parameters of the constructor, the search must be by type, if there are several parameters of that type, make a comparison by name, if it does not contain the text, the first attribute found of the same type is put.
 - [ ] Generate getters and setters
 - [x] Select a method and generate it.
-- [ ] Regenerate all Constructors
-- [ ] Regenerate a single Constructor
+- [ ] Regenerate all Constructors, only the constructors
+- [ ] Regenerate a single Constructor, only one constructor
+- [ ] Ask you in which path you want to create the file.
+- Debe añadirse una configuración que permita indicar en que ruta se debe guardar el fichero auto generado .cpp. El path que se ponga tiene que ser relativo, por ejemplo si en la configuración se pone ../src, se utilizará la ruta en donde eta el hpp, subira uno e ira a la carpeta src. Debe permitir la configuraci´on cumplir el requisito anterior de preguntar donde se debe guardar el fichero
 
 ### Refactoring requirements
 
@@ -78,4 +79,4 @@ This is what i expect, if you have some suggestion contact me via mail.
 
 ## Known bugs
 
-- [ ] When try to generate a method with override, the implementation get override mark too
+- [x] When try to generate a method with override, the implementation get override mark too

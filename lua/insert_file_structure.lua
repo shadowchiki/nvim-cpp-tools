@@ -70,6 +70,11 @@ function M.insert_method(actual_class, capture_name, capture_value, start_row, e
 	if capture_name == "methodName" and actual_class ~= nil then
 		if actual_class then
 			capture_value = string.gsub(capture_value, "override", "")
+			if string.find(capture_value, "&") then
+				capture_value = string.gsub(capture_value, "&", "")
+				actual_class.methods[#actual_class.methods].type = actual_class.methods[#actual_class.methods].type
+					.. "&"
+			end
 			actual_class.methods[#actual_class.methods].name = capture_value
 		end
 	end

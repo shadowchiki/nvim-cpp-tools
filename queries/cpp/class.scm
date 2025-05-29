@@ -25,13 +25,13 @@
     body: (field_declaration_list
         (field_declaration
             type: [(qualified_identifier) (primitive_type)] @methodType
-            declarator: (function_declarator) @methodName)@methodLine))
+            declarator: [(reference_declarator) (function_declarator)] @methodName)@methodLine))
 
 (class_specifier
     name: (type_identifier)
     body: (field_declaration_list
         (field_declaration
-            declarator: (function_declarator) @methodNameRemove
+            declarator: [(reference_declarator) (function_declarator)] @methodNameRemove
             default_value: (number_literal) @virtual (#eq? @virtual  "0"))))
 
 (field_declaration
