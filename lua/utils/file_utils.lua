@@ -38,12 +38,19 @@ function M.construct_include_path(splitted_name, position_config)
 end
 
 function M.generate_include_file_path(h_filename)
-	local name = M.generate_file_path(h_filename)
-	local splitted_name = M.split_file_path(name)
 	local final_name = ""
-	local position_config = M.get_position_off_the_configuration(splitted_name)
-	final_name = M.construct_include_path(splitted_name, position_config)
-	final_name = string.gsub(final_name, config.generate_cpp_file_path, config.origin_hpp_file_path)
+	if
+		config.generate_cpp_file_path ~= nil and config.generate_cpp_file_path ~= ""
+		or config.origin_hpp_file_path ~= nil and config.origin_hpp_file_path ~= ""
+	then
+		local name = M.generate_file_path(h_filename)
+		local splitted_name = M.split_file_path(name)
+		local position_config = M.get_position_off_the_configuration(splitted_name)
+		final_name = M.construct_include_path(splitted_name, position_config)
+		final_name = string.gsub(final_name, config.generate_cpp_file_path, config.origin_hpp_file_path)
+	else
+		final_name = h_filename:match("([^/]+)$")
+	end
 	return final_name
 end
 
