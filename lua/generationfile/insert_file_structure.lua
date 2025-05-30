@@ -18,23 +18,33 @@ function M.is_empty_constructor(paramsSplit)
 	return paramsSplit[1] ~= ""
 end
 
-function M.split_arams(params)
-	local paramsWithOutParentesis = params:gsub("[()]", "")
-	local paramsRemovedBlanck = paramsWithOutParentesis:gsub(", ", ",")
+function M.split_params(params)
+	local params_with_out_parentesis = params:gsub("[()]", "")
+	local paramsRemovedBlanck = params_with_out_parentesis:gsub(", ", ",")
 	local paramsSplit = vim.split(paramsRemovedBlanck, ",")
 	return paramsSplit
 end
 
 function M.dispatch_constructor_params(params)
-	local paramSplitedStructure = { params = {} }
-	local paramsSplit = M.split_arams(params)
-	if M.is_empty_constructor(paramsSplit) then
-		for _, param in ipairs(paramsSplit) do
-			local paramSplited = vim.split(param, " ")
-			table.insert(paramSplitedStructure.params, { type = paramSplited[1], name = paramSplited[2], used = false })
+	local param_splited_structure = { params = {} }
+	local params_split = M.split_params(params)
+	if M.is_empty_constructor(params_split) then
+		for _, param in ipairs(params_split) do
+			local param_splited = vim.split(param, " ")
+			if #param_splited == 3 then
+				table.insert(
+					param_splited_structure.params,
+					{ type = param_splited[1] .. " " .. param_splited[2], name = param_splited[3], used = false }
+				)
+			else
+				table.insert(
+					param_splited_structure.params,
+					{ type = param_splited[1], name = param_splited[2], used = false }
+				)
+			end
 		end
 	end
-	return paramSplitedStructure
+	return param_splited_structure
 end
 
 function M.insert_inheritance(actual_class, capture_name, capture_value)
