@@ -56,15 +56,15 @@ function M.find_attribute_by_type(attribute, params)
 	return inicialize_value
 end
 
-function M.inicialize_attribute_with_constructor_param(attribute, params)
+function M.initialize_attribute_with_constructor_param(attribute, params)
 	if #params == 0 then
 		return ""
 	end
-	local inicialize_value = M.find_attribute_by_type_and_name(attribute, params)
-	if inicialize_value == "" then
-		inicialize_value = M.find_attribute_by_type(attribute, params)
+	local initialize_value = M.find_attribute_by_type_and_name(attribute, params)
+	if initialize_value == "" then
+		initialize_value = M.find_attribute_by_type(attribute, params)
 	end
-	return inicialize_value
+	return initialize_value
 end
 
 function M.process_constructor(class, cpp_lines)
@@ -103,7 +103,7 @@ function M.process_constructor(class, cpp_lines)
 		if #class.attributes ~= 0 then
 			for key, attribute in ipairs(class.attributes) do
 				table.insert(cpp_lines, " " .. attribute.name .. "(")
-				local param_to_attribute = M.inicialize_attribute_with_constructor_param(attribute, constructor.params)
+				local param_to_attribute = M.initialize_attribute_with_constructor_param(attribute, constructor.params)
 					.. ")"
 				table.insert(result, param_to_attribute)
 				table.insert(cpp_lines, param_to_attribute)

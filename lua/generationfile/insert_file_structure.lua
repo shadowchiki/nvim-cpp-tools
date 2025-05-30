@@ -19,7 +19,7 @@ function M.is_empty_constructor(paramsSplit)
 end
 
 function M.split_params(params)
-	local params_with_out_parentesis = params:gsub("[()]", "")
+	local params_with_out_parentesis = string.sub(params, 2, -2)
 	local paramsRemovedBlanck = params_with_out_parentesis:gsub(", ", ",")
 	local paramsSplit = vim.split(paramsRemovedBlanck, ",")
 	return paramsSplit
@@ -71,6 +71,10 @@ function M.insert_destructor(actual_class, capture_name)
 	end
 end
 
+function M.check_if_method_return_reference_type(capture_value)
+	return string.sub(capture_value, 1, 1) == "&"
+end
+
 function M.insert_method(actual_class, capture_name, capture_value, start_row, end_row)
 	if capture_name == "methodType" and actual_class ~= nil then
 		if actual_class then
@@ -81,8 +85,8 @@ function M.insert_method(actual_class, capture_name, capture_value, start_row, e
 	if capture_name == "methodName" and actual_class ~= nil then
 		if actual_class then
 			capture_value = string.gsub(capture_value, "override", "")
-			if string.sub(capture_value, 1, 1) == "&" then
-				capture_value = string.gsub(capture_value, "&", "")
+			if M.check_if_method_return_reference_type(capture_value) then
+				capture_value = string.gsub(capture_value, "&", "", 1)
 				actual_class.methods[#actual_class.methods].type = actual_class.methods[#actual_class.methods].type
 					.. "&"
 				capture_value = string_utils.trim(capture_value)
