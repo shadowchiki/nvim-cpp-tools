@@ -1,4 +1,5 @@
 local M = {}
+local file_utils = require("file_utils")
 
 function M.process_namespaces(cpp_lines, namespaces)
 	for _, ns in ipairs(namespaces) do
@@ -142,7 +143,7 @@ end
 function M.process_file_structure(file_structure)
 	local h_filename = vim.api.nvim_buf_get_name(0)
 	local cpp_lines = {
-		'#include "' .. h_filename:match("([^/]+)$") .. '"',
+		'#include "' .. file_utils.generate_include_file_path(h_filename) .. '"',
 		"",
 	}
 

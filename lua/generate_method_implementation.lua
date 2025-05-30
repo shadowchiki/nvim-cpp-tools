@@ -1,6 +1,7 @@
 local ts_query = require("nvim-treesitter.query")
 local process_cpp = require("process_cpp")
 local insert_file_structure = require("insert_file_structure")
+local file_utils = require("file_utils")
 
 local M = {}
 
@@ -31,10 +32,7 @@ function M.generate_method_implementation()
 		class_with_method_to_implement.methods[#class_with_method_to_implement.methods]
 	)
 
-	-- TODO: Poner el mecanismo para que coja la ruta de la configuracion
-	local h_filename = vim.api.nvim_buf_get_name(0)
-	local cpp_filename = h_filename:gsub("%.h$", ".cpp"):gsub("%.hpp$", ".cpp")
-	vim.cmd("edit " .. cpp_filename)
+	vim.cmd("edit " .. file_utils.generate_cpp_file_path(vim.api.nvim_buf_get_name(0)))
 
 	local cpp_file_structure = insert_file_structure.get_class_structure("implementation_file")
 
