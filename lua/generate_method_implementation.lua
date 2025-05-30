@@ -31,13 +31,14 @@ function M.generate_method_implementation()
 		class_with_method_to_implement.methods[#class_with_method_to_implement.methods]
 	)
 
+	-- TODO: Poner el mecanismo para que coja la ruta de la configuracion
 	local h_filename = vim.api.nvim_buf_get_name(0)
 	local cpp_filename = h_filename:gsub("%.h$", ".cpp"):gsub("%.hpp$", ".cpp")
 	vim.cmd("edit " .. cpp_filename)
 
 	local cpp_file_structure = insert_file_structure.get_class_structure("implementation_file")
 
-	if insert_file_structure.isAlredyImplemented(cpp_file_structure, class_with_method_to_implement) == true then
+	if insert_file_structure.is_alredy_implemented(cpp_file_structure, class_with_method_to_implement) == true then
 		print(
 			"Cant implement "
 				.. class_with_method_to_implement.methods[#class_with_method_to_implement.methods].name

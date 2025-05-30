@@ -1,8 +1,9 @@
 local M = {}
 
 local ts_query = require("nvim-treesitter.query")
+local string_utils = require("string_utils")
 
-function M.isAlredyImplemented(file_structure, class)
+function M.is_alredy_implemented(file_structure, class)
 	local isAlredyImplemented = false
 	for _, method in ipairs(file_structure.classes[class.name].methods) do
 		if method.name == class.methods[#class.methods].name and method.type == class.methods[#class.methods].type then
@@ -13,11 +14,11 @@ function M.isAlredyImplemented(file_structure, class)
 	return isAlredyImplemented
 end
 
-function M.isEmptyConstructor(paramsSplit)
+function M.is_empty_constructor(paramsSplit)
 	return paramsSplit[1] ~= ""
 end
 
-function M.splitParams(params)
+function M.split_arams(params)
 	local paramsWithOutParentesis = params:gsub("[()]", "")
 	local paramsRemovedBlanck = paramsWithOutParentesis:gsub(", ", ",")
 	local paramsSplit = vim.split(paramsRemovedBlanck, ",")
@@ -26,8 +27,8 @@ end
 
 function M.dispatch_constructor_params(params)
 	local paramSplitedStructure = { params = {} }
-	local paramsSplit = M.splitParams(params)
-	if M.isEmptyConstructor(paramsSplit) then
+	local paramsSplit = M.split_arams(params)
+	if M.is_empty_constructor(paramsSplit) then
 		for _, param in ipairs(paramsSplit) do
 			local paramSplited = vim.split(param, " ")
 			table.insert(paramSplitedStructure.params, { type = paramSplited[1], name = paramSplited[2], used = false })
@@ -74,6 +75,7 @@ function M.insert_method(actual_class, capture_name, capture_value, start_row, e
 				capture_value = string.gsub(capture_value, "&", "")
 				actual_class.methods[#actual_class.methods].type = actual_class.methods[#actual_class.methods].type
 					.. "&"
+				capture_value = string_utils.trim(capture_value)
 			end
 			actual_class.methods[#actual_class.methods].name = capture_value
 		end
@@ -83,15 +85,21 @@ function M.insert_method(actual_class, capture_name, capture_value, start_row, e
 		if actual_class then
 			table.insert(
 				actual_class.methods,
-				{ type = "", name = "", startline = start_row + 1, endline = end_row + 1 }
+				{ type = "", name = "", startline = start_row + 1, endline = end_row + 2 }
 			)
 		end
 	end
 
 	if capture_name == "methodParameters" and actual_class ~= nil then
 		if actual_class then
-			local methodName = actual_class.methods[#actual_class.methods].name
-			methodName = methodName .. capture_value
+			actual_class.methods[#actual_class.methods].name = actual_class.methods[#actual_class.methods].name
+				.. capture_value
+		end
+	end
+
+	if capture_name == "reference" and actual_class ~= nil then
+		if actual_class then
+			actual_class.methods[#actual_class.methods].type = actual_class.methods[#actual_class.methods].type .. "&"
 		end
 	end
 

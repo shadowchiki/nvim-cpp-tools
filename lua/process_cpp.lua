@@ -112,7 +112,8 @@ function M.process_constructor(class, cpp_lines)
 			end
 		end
 
-		table.insert(cpp_lines, "{}\n")
+		table.insert(cpp_lines, "{}")
+		table.insert(cpp_lines, "")
 	end
 end
 
@@ -120,13 +121,15 @@ function M.process_destructor(class, cpp_lines)
 	if class.needDestructor then
 		table.insert(cpp_lines, class.name .. "::" .. "~" .. class.name .. "()" .. "{")
 		table.insert(cpp_lines, "}\n")
+		table.insert(cpp_lines, "")
 	end
 end
 
 function M.process_methods(class, cpp_lines)
 	for _, method in ipairs(class.methods) do
 		table.insert(cpp_lines, method.type .. " " .. class.name .. "::" .. method.name .. "{")
-		table.insert(cpp_lines, "}\n")
+		table.insert(cpp_lines, "}")
+		table.insert(cpp_lines, "")
 	end
 end
 
