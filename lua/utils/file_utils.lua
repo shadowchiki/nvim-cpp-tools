@@ -1,6 +1,6 @@
 local M = {}
 
-local config = require("config").get_config()
+local config = require("config.config").get_config()
 
 function M.split_file_path(h_filename)
 	local splitted_name = {}

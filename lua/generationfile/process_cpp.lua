@@ -1,5 +1,5 @@
 local M = {}
-local file_utils = require("file_utils")
+local file_utils = require("utils.file_utils")
 
 function M.process_namespaces(cpp_lines, namespaces)
 	for _, ns in ipairs(namespaces) do

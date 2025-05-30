@@ -1,7 +1,7 @@
 local M = {}
 
 local ts_query = require("nvim-treesitter.query")
-local string_utils = require("string_utils")
+local string_utils = require("utils.string_utils")
 
 function M.is_alredy_implemented(file_structure, class)
 	local isAlredyImplemented = false
