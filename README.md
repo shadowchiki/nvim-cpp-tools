@@ -25,7 +25,7 @@ This is what i expect, if you have some suggestion contact me via mail.
 
 ### Auto generate implementations of header file
 
-- [ ] Must be able to allow to implement the inheritance methods that could have override the pure virtual parent methods.
+- [x] Must be able to allow to implement the inheritance methods that could have override the pure virtual parent methods.
 - [x] Read attributes and set them to be automatically initialized in the constructor as if it had a parent.
 - [ ] Template classes
 - [x] Initialize the attributes of the class with the parameters of the constructor, the search must be by type, if there are several parameters of that type, make a comparison by name, if it does not contain the text, the first attribute found of the same type is put.
@@ -34,7 +34,7 @@ This is what i expect, if you have some suggestion contact me via mail.
 - [ ] Regenerate all Constructors, only the constructors
 - [ ] Regenerate a single Constructor, only one constructor
 - [ ] Ask you in which path you want to create the file.
-- Debe añadirse una configuración que permita indicar en que ruta se debe guardar el fichero auto generado .cpp. El path que se ponga tiene que ser relativo, por ejemplo si en la configuración se pone ../src, se utilizará la ruta en donde eta el hpp, subira uno e ira a la carpeta src. Debe permitir la configuraci´on cumplir el requisito anterior de preguntar donde se debe guardar el fichero
+- [ ] Must be able to create an implementation with any kind of extension of cpp, like .h, .hpp, .hxx. Right now just work with hpp
 
 ### Refactoring requirements
 
@@ -47,6 +47,10 @@ This is what i expect, if you have some suggestion contact me via mail.
 
 ### LazyVim
 
+#### Default configuration
+
+This is de default configuration, is no needed if your proyect have the .hpp and .cpp files in the same folder.
+
 ```lua
 {
  "shadowchiki/nvim-cpp-tools",
@@ -55,6 +59,25 @@ This is what i expect, if you have some suggestion contact me via mail.
  },
  config = function()
   require("nvim-cpp-tools")
+ end,
+}
+```
+
+#### Configuration with custom paths
+
+You can configure where is generated the .cpp files. For example if your proyect is separated in the include folder that contains all .hpp and src folder that contains the .cpp files, you must set up the next configuration. Both paths are relatives from each other.
+
+```lua
+{
+ "shadowchiki/nvim-cpp-tools",
+ dependencies = {
+  "nvim-treesitter/nvim-treesitter",
+ },
+ config = function()
+  require("nvim-cpp-tools").setup({
+     generate_cpp_file_path = "../src",
+     origin_hpp_file_path = "../include",
+    })
  end,
 }
 ```
