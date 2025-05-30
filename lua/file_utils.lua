@@ -2,24 +2,30 @@ local M = {}
 
 local config = require("config").get_config()
 
-function M.generate_include_file_path(h_filename)
-	local name = M.generate_file_path(h_filename)
-
-	local splitted_name_var = {}
-	for each in string.gmatch(name, "[^/]+") do
-		table.insert(splitted_name_var, each)
+function M.split_file_path(h_filename)
+	local splitted_name = {}
+	for each in string.gmatch(h_filename, "[^/]+") do
+		table.insert(splitted_name, each)
 	end
+	return splitted_name
+end
+
+function M.get_position_off_the_configuration(splitted_name)
 	local split_config = string.gmatch(config.generate_cpp_file_path, "[^/]+")
 	local fist_position_on_iterator = split_config()
 	local position_config = -1
-	for position, each in ipairs(splitted_name_var) do
+	for position, each in ipairs(splitted_name) do
 		if each == fist_position_on_iterator then
 			position_config = position
 			break
 		end
 	end
+	return position_config
+end
+
+function M.construct_include_path(splitted_name, position_config)
 	local final_name = ""
-	for position, each in ipairs(splitted_name_var) do
+	for position, each in ipairs(splitted_name) do
 		if position >= position_config then
 			if final_name == "" then
 				final_name = each
@@ -28,18 +34,24 @@ function M.generate_include_file_path(h_filename)
 			end
 		end
 	end
+	return final_name
+end
+
+function M.generate_include_file_path(h_filename)
+	local name = M.generate_file_path(h_filename)
+	local splitted_name = M.split_file_path(name)
+	local final_name = ""
+	local position_config = M.get_position_off_the_configuration(splitted_name)
+	final_name = M.construct_include_path(splitted_name, position_config)
 	final_name = string.gsub(final_name, config.generate_cpp_file_path, config.origin_hpp_file_path)
 	return final_name
 end
 
 function M.generate_file_path(h_filename)
-	local splitted_name_var = {}
 	local final_name = ""
-	for each in string.gmatch(h_filename, "[^/]+") do
-		table.insert(splitted_name_var, each)
-	end
-	for _, part in ipairs(splitted_name_var) do
-		if part == splitted_name_var[#splitted_name_var] then
+	local splitted_name = M.split_file_path(h_filename)
+	for _, part in ipairs(splitted_name) do
+		if part == splitted_name[#splitted_name] then
 			final_name = final_name .. "/" .. config.generate_cpp_file_path
 		end
 		final_name = final_name .. "/" .. part
