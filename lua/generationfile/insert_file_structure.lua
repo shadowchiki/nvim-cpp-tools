@@ -91,7 +91,14 @@ function M.insert_method(actual_class, capture_name, capture_value, start_row, e
 					.. "&"
 				capture_value = string_utils.trim(capture_value)
 			end
-			actual_class.methods[#actual_class.methods].name = capture_value
+			if actual_class.methods[#actual_class.methods] == nil then
+				table.insert(
+					actual_class.methods,
+					{ type = "", name = capture_value, startline = start_row + 1, endline = end_row + 2 }
+				)
+			else
+				actual_class.methods[#actual_class.methods].name = capture_value
+			end
 		end
 	end
 
@@ -208,6 +215,7 @@ function M.get_class_structure(query)
 			end
 			actual_class = capture_value
 		end
+
 		M.insert_inheritance(file_structure.classes[actual_class], capture_name, capture_value)
 		M.insert_constructor(file_structure.classes[actual_class], capture_name, capture_value)
 		M.insert_destructor(file_structure.classes[actual_class], capture_name)
