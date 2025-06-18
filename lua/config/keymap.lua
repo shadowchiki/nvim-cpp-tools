@@ -7,6 +7,7 @@ function M.setup()
 			local generate_method_implementation = require("generate_method_implementation")
 			local unused_includes = require("remove_unused_includes")
 			local generate_cpp_file = require("generate_cpp_file")
+			local generate_getters_and_setters = require("generate_getters_and_setters")
 			vim.keymap.set(
 				"n",
 				"<leader>co",
@@ -26,6 +27,12 @@ function M.setup()
 				generate_cpp_file.generate_cpp_file,
 				{ desc = "Generate Implementation", noremap = true, silent = true }
 			)
+			vim.keymap.set(
+				"n",
+				"<Leader>cg",
+				generate_getters_and_setters.generate_getters_and_setters,
+				{ desc = "Generate Getters and Setters", noremap = true, silent = true }
+			)
 			vim.api.nvim_buf_create_user_command(
 				0,
 				"RemoveUnusedIncludes",
@@ -43,6 +50,12 @@ function M.setup()
 				"GenerateCppImplementation",
 				generate_cpp_file.generate_cpp_file,
 				{ desc = "Generate Implementation" }
+			)
+			vim.api.nvim_buf_create_user_command(
+				0,
+				"GenerateGettersAndSetters",
+				generate_getters_and_setters.generate_getters_and_setters,
+				{ desc = "Generate Getters and Setters" }
 			)
 		end,
 	})

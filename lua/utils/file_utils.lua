@@ -34,6 +34,11 @@ function M.construct_include_path(splitted_name, position_config)
 			end
 		end
 	end
+	local splitted_final_name = M.split_file_path(final_name)
+	for i = 1, #splitted_final_name - 3 do
+		final_name = "../" .. final_name
+	end
+	print(final_name)
 	return final_name
 end
 
@@ -57,18 +62,28 @@ end
 function M.generate_file_path(h_filename)
 	local final_name = ""
 	local splitted_name = M.split_file_path(h_filename)
+	local origin_path_splitted = M.split_file_path(config.origin_hpp_file_path)
 	for _, part in ipairs(splitted_name) do
-		if part == splitted_name[#splitted_name] then
+		if part == origin_path_splitted[#origin_path_splitted] then
 			final_name = final_name .. "/" .. config.generate_cpp_file_path
+		else
+			final_name = final_name .. "/" .. part
 		end
-		final_name = final_name .. "/" .. part
 	end
 	return final_name
 end
 
 function M.generate_cpp_file_path(h_filename)
 	local cpp_filename = h_filename:gsub("%.h$", ".cpp"):gsub("%.hpp$", ".cpp")
-	return M.generate_file_path(cpp_filename)
+	local final_name = M.generate_file_path(cpp_filename)
+	local origin_path_splitted = M.split_file_path(config.origin_hpp_file_path)
+	local generate_path_splitted = M.split_file_path(config.generate_cpp_file_path)
+	final_name = string.gsub(
+		cpp_filename,
+		origin_path_splitted[#origin_path_splitted],
+		generate_path_splitted[#generate_path_splitted]
+	)
+	return final_name
 end
 
 function M.create_cpp_file(cpp_lines, h_filename)
@@ -80,7 +95,7 @@ function M.create_cpp_file(cpp_lines, h_filename)
 		vim.cmd("edit " .. final_name)
 		vim.lsp.buf.format()
 	else
-		print("Cant create file: " .. final_name)
+		-- print("Cant create file: " .. final_name)
 	end
 end
 
