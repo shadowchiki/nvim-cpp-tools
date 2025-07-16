@@ -36,7 +36,7 @@ function M.generate_method_implementation()
 
 	local cpp_file_structure = insert_file_structure.get_class_structure("implementation_file")
 
-	if insert_file_structure.is_alredy_implemented(cpp_file_structure, class_with_method_to_implement) == true then
+	if insert_file_structure.is_already_implemented(cpp_file_structure, class_with_method_to_implement) == true then
 		print(
 			"Cant implement "
 				.. class_with_method_to_implement.methods[#class_with_method_to_implement.methods].name

@@ -144,7 +144,8 @@ function M.process_getter(attribute, cpp_lines) end
 function M.process_setter(attribute, cpp_lines) end
 
 function M.process_file_structure(file_structure)
-	local h_filename = vim.api.nvim_buf_get_name(0)
+	local bufnr = vim.api.nvim_get_current_buf()
+	local h_filename = vim.api.nvim_buf_get_name(bufnr)
 	local cpp_lines = {
 		'#include "' .. file_utils.generate_include_file_path(h_filename) .. '"',
 		"",

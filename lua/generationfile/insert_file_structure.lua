@@ -1,34 +1,35 @@
 local M = {}
 
-local ts_query = require("nvim-treesitter.query")
+-- local ts_query = require("nvim-treesitter.query")
+local ts_query = require("vim.treesitter.query")
 local string_utils = require("utils.string_utils")
 
-function M.is_alredy_implemented(file_structure, class)
-	local isAlredyImplemented = false
+function M.is_already_implemented(file_structure, class)
+	local is_already_implemented = false
 	for _, method in ipairs(file_structure.classes[class.name].methods) do
 		if method.name == class.methods[#class.methods].name and method.type == class.methods[#class.methods].type then
-			isAlredyImplemented = true
+			is_already_implemented = true
 			break
 		end
 	end
-	return isAlredyImplemented
+	return is_already_implemented
 end
 
-function M.is_empty_constructor(paramsSplit)
+local function is_empty_constructor(paramsSplit)
 	return paramsSplit[1] ~= ""
 end
 
-function M.split_params(params)
+local function split_params(params)
 	local params_with_out_parentesis = string.sub(params, 2, -2)
-	local paramsRemovedBlanck = params_with_out_parentesis:gsub(", ", ",")
-	local paramsSplit = vim.split(paramsRemovedBlanck, ",")
-	return paramsSplit
+	local params_removed_blanck = params_with_out_parentesis:gsub(", ", ",")
+	local params_split = vim.split(params_removed_blanck, ",")
+	return params_split
 end
 
-function M.dispatch_constructor_params(params)
+local function dispatch_constructor_params(params)
 	local param_splited_structure = { params = {} }
-	local params_split = M.split_params(params)
-	if M.is_empty_constructor(params_split) then
+	local params_split = split_params(params)
+	if is_empty_constructor(params_split) then
 		for _, param in ipairs(params_split) do
 			local param_splited = vim.split(param, " ")
 			if #param_splited == 3 then
@@ -47,7 +48,7 @@ function M.dispatch_constructor_params(params)
 	return param_splited_structure
 end
 
-function M.insert_inheritance(actual_class, capture_name, capture_value)
+local function insert_inheritance(actual_class, capture_name, capture_value)
 	if capture_name == "inheritance" and actual_class ~= nil then
 		if actual_class then
 			table.insert(actual_class.inheritances, capture_value)
@@ -55,15 +56,15 @@ function M.insert_inheritance(actual_class, capture_name, capture_value)
 	end
 end
 
-function M.insert_constructor(actual_class, capture_name, capture_value)
+local function insert_constructor(actual_class, capture_name, capture_value)
 	if capture_name == "constructorParamList" and actual_class ~= nil then
 		if actual_class then
-			table.insert(actual_class.constructors, M.dispatch_constructor_params(capture_value))
+			table.insert(actual_class.constructors, dispatch_constructor_params(capture_value))
 		end
 	end
 end
 
-function M.insert_destructor(actual_class, capture_name)
+local function insert_destructor(actual_class, capture_name)
 	if capture_name == "destructor" and actual_class ~= nil then
 		if actual_class then
 			actual_class.needDestructor = true
@@ -71,11 +72,11 @@ function M.insert_destructor(actual_class, capture_name)
 	end
 end
 
-function M.check_if_method_return_reference_type(capture_value)
+local function check_if_method_return_reference_type(capture_value)
 	return string.sub(capture_value, 1, 1) == "&"
 end
 
-function M.insert_method(actual_class, capture_name, capture_value, start_row, end_row)
+local function insert_method(actual_class, capture_name, capture_value, start_row, end_row)
 	if capture_name == "methodType" and actual_class ~= nil then
 		if actual_class then
 			actual_class.methods[#actual_class.methods].type = capture_value
@@ -85,7 +86,7 @@ function M.insert_method(actual_class, capture_name, capture_value, start_row, e
 	if capture_name == "methodName" and actual_class ~= nil then
 		if actual_class then
 			capture_value = string.gsub(capture_value, "override", "")
-			if M.check_if_method_return_reference_type(capture_value) then
+			if check_if_method_return_reference_type(capture_value) then
 				capture_value = string.gsub(capture_value, "&", "", 1)
 				actual_class.methods[#actual_class.methods].type = actual_class.methods[#actual_class.methods].type
 					.. "&"
@@ -131,7 +132,7 @@ function M.insert_method(actual_class, capture_name, capture_value, start_row, e
 	end
 end
 
-function M.insert_attribute(actual_class, capture_name, capture_value)
+local function insert_attribute(actual_class, capture_name, capture_value)
 	if capture_name == "attributeType" and actual_class ~= nil then
 		if actual_class then
 			table.insert(actual_class.attributes, { type = capture_value, name = "" })
@@ -144,16 +145,6 @@ function M.insert_attribute(actual_class, capture_name, capture_value)
 		end
 	end
 end
-
-function M.create_test_file(file_name, results)
-	local file = io.open(vim.fn.expand(file_name), "w") -- Guardar en home
-	if file then
-		file:write(table.concat(results, "\n"))
-		file:close()
-	end
-end
-
-M.actual_class = ""
 
 function M.get_class_name_from_method(hpp_classes, method_selected)
 	local className = ""
@@ -174,7 +165,7 @@ end
 
 function M.get_class_structure(query)
 	local bufnr = vim.api.nvim_get_current_buf()
-	local parser = vim.treesitter.get_parser(bufnr)
+	local parser = vim.treesitter.get_parser()
 	local tree = parser:parse()[1]
 	local root = tree:root()
 
@@ -190,13 +181,15 @@ function M.get_class_structure(query)
 		},
 	}
 
-	local result = ts_query.get_query("cpp", query)
+	local result = ts_query.get("cpp", query)
 	local actual_class = ""
 
 	for id, node in result:iter_captures(root, bufnr) do
 		local capture_name = result.captures[id]
 		local capture_value = vim.treesitter.get_node_text(node, bufnr)
 		local start_row, _, end_row, _ = node:range()
+		-- vim.api.nvim_echo({ { "Printing capture_name " .. capture_name, "None" } }, true, {})
+		-- vim.api.nvim_echo({ { "Printing capture_value " .. capture_value, "None" } }, true, {})
 
 		if capture_name == "namespace" then
 			table.insert(file_structure.namespaces, capture_value)
@@ -216,11 +209,11 @@ function M.get_class_structure(query)
 			actual_class = capture_value
 		end
 
-		M.insert_inheritance(file_structure.classes[actual_class], capture_name, capture_value)
-		M.insert_constructor(file_structure.classes[actual_class], capture_name, capture_value)
-		M.insert_destructor(file_structure.classes[actual_class], capture_name)
-		M.insert_method(file_structure.classes[actual_class], capture_name, capture_value, start_row, end_row)
-		M.insert_attribute(file_structure.classes[actual_class], capture_name, capture_value)
+		insert_inheritance(file_structure.classes[actual_class], capture_name, capture_value)
+		insert_constructor(file_structure.classes[actual_class], capture_name, capture_value)
+		insert_destructor(file_structure.classes[actual_class], capture_name)
+		insert_method(file_structure.classes[actual_class], capture_name, capture_value, start_row, end_row)
+		insert_attribute(file_structure.classes[actual_class], capture_name, capture_value)
 	end
 
 	return file_structure

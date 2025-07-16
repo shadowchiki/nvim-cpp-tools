@@ -75,6 +75,9 @@ end
 
 function M.generate_cpp_file_path(h_filename)
 	local cpp_filename = h_filename:gsub("%.h$", ".cpp"):gsub("%.hpp$", ".cpp")
+	if config.generate_cpp_file_path == "" or config.origin_hpp_file_path == "" then
+		return cpp_filename
+	end
 	local final_name = M.generate_file_path(cpp_filename)
 	local origin_path_splitted = M.split_file_path(config.origin_hpp_file_path)
 	local generate_path_splitted = M.split_file_path(config.generate_cpp_file_path)
@@ -92,10 +95,11 @@ function M.create_cpp_file(cpp_lines, h_filename)
 	if file then
 		file:write(table.concat(cpp_lines, "\n"))
 		file:close()
-		vim.cmd("edit " .. final_name)
-		vim.lsp.buf.format()
+		pcall(vim.cmd("edit " .. final_name))
+		local mason_clang_format = vim.fn.stdpath("data") .. "/mason/bin/clang-format"
+		os.execute(string.format("%s -i %q", mason_clang_format, final_name))
 	else
-		-- print("Cant create file: " .. final_name)
+		vim.notify("Cant create file: " .. final_name, vim.log.levels.ERROR)
 	end
 end
 
