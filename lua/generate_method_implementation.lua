@@ -1,4 +1,5 @@
-local ts_query = require("nvim-treesitter.query")
+local ts_query = vim.treesitter.query
+
 local process_cpp = require("generationfile.process_cpp")
 local insert_file_structure = require("generationfile.insert_file_structure")
 local file_utils = require("utils.file_utils")
