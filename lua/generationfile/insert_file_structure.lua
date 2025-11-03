@@ -188,8 +188,6 @@ function M.get_class_structure(query)
 		local capture_name = result.captures[id]
 		local capture_value = vim.treesitter.get_node_text(node, bufnr)
 		local start_row, _, end_row, _ = node:range()
-		-- vim.api.nvim_echo({ { "Printing capture_name " .. capture_name, "None" } }, true, {})
-		-- vim.api.nvim_echo({ { "Printing capture_value " .. capture_value, "None" } }, true, {})
 
 		if capture_name == "namespace" then
 			table.insert(file_structure.namespaces, capture_value)

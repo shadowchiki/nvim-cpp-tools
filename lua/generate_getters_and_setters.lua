@@ -3,11 +3,11 @@ local insert_file_structure = require("generationfile.insert_file_structure")
 local M = {}
 
 local attributes = {
-	{ name = "Generate", type = "std::shared_ptr<Excursion>" },
-	{ name = "All", type = "std::shared_ptr<Excursion>", marked = false },
-	-- { name = "mAttribute1", type = "std::shared_ptr<Excursion>", marked = false },
-	-- { name = "mAttribute2", type = "std::string", marked = false },
+	{ name = "Generate" },
+	{ name = "All", marked = false },
 }
+
+local selection = {}
 
 function M.calculate_marker(prev_selected_name)
 	-- Para pintar los nombres, hay que comprobar si el listado de clases es > 1, en caso de que sea true hay que poner el nombre de la clase delante de cada atributo
@@ -36,6 +36,19 @@ function M.attribute_menu(prev_selected_name)
 	}, function(choice)
 		if choice ~= nil and choice.name ~= "Generate" and choice.name ~= "All" then
 			M.attribute_menu(choice.name)
+		else
+			local process_all = false
+			local cpp_lines = {}
+			for _, value in ipairs(attributes) do
+				if process_all == true then
+					selection:execution(value, cpp_lines)
+				elseif value.name == "All" and value.marked == true then
+					process_all = true
+					selection:execution(value, cpp_lines)
+				elseif value.marked ~= nil and value.marked == true and process_all == false then
+					selection:execution(value, cpp_lines)
+				end
+			end
 		end
 	end)
 end
@@ -72,8 +85,12 @@ function M.prepare_options()
 end
 
 function M.generate_getters_and_setters()
+	local localAttributes = {
+		{ name = "Generate" },
+		{ name = "All", marked = false },
+	}
+	attributes = localAttributes
 	local entries = M.prepare_options()
-	local selection = {}
 	vim.ui.select(entries, {
 		prompt = "Choose an option",
 		format_item = function(item)
@@ -82,31 +99,16 @@ function M.generate_getters_and_setters()
 	}, function(choice)
 		if choice then
 			selection = choice
-			local file_structure = insert_file_structure.get_class_structure("class")
+			print("selection " .. selection.name)
 
-			for _, class in pairs(file_structure.classes) do
-				print("Attribute " .. class.name .. " key " .. _)
-				for _, attribute in pairs(class.attributes) do
-					attribute.marked = false
-					table.insert(attributes, class)
-				end
+			local file_structure = insert_file_structure.get_class_structure("class")
+			for _, attribute in ipairs(file_structure.classes["Partner"].attributes) do
+				attribute.marked = false
+				table.insert(attributes, attribute)
 			end
 			M.attribute_menu("")
 		end
 	end)
-
-	local process_all = false
-	local cpp_lines = {}
-	for _, value in pairs(attributes) do
-		if process_all == true then
-			selection:execution(value, cpp_lines)
-		elseif value.name == "All" and value.marked == true then
-			process_all = true
-			selection:execution(value, cpp_lines)
-		elseif value.marked ~= nil and value.marked == true and process_all == false then
-			selection:execution(value, cpp_lines)
-		end
-	end
 end
 
 return M

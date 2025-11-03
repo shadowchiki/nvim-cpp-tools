@@ -140,7 +140,9 @@ function M.close_namespaces(cpp_lines, file_structure)
 	end
 end
 
-function M.process_getter(attribute, cpp_lines) end
+function M.process_getter(attribute, cpp_lines)
+	print("running process getter ")
+end
 function M.process_setter(attribute, cpp_lines) end
 
 function M.process_file_structure(file_structure)
