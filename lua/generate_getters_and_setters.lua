@@ -28,6 +28,7 @@ end
 
 function M.attribute_menu(prev_selected_name)
 	M.calculate_marker(prev_selected_name)
+
 	vim.ui.select(attributes, {
 		prompt = "Choose an attribute",
 		format_item = function(item)
@@ -37,9 +38,10 @@ function M.attribute_menu(prev_selected_name)
 		if choice ~= nil and choice.name ~= "Generate" and choice.name ~= "All" then
 			M.attribute_menu(choice.name)
 		else
+        --TODO: Este bucle recorre lo que no debe, porque tambien recorre generate y all, no deberia
 			local process_all = false
 			local cpp_lines = {}
-			for _, value in ipairs(attributes) do
+			for _, value in pairs(attributes) do
 				if process_all == true then
 					selection:execution(value, cpp_lines)
 				elseif value.name == "All" and value.marked == true then
@@ -99,12 +101,12 @@ function M.generate_getters_and_setters()
 	}, function(choice)
 		if choice then
 			selection = choice
-			print("selection " .. selection.name)
-
 			local file_structure = insert_file_structure.get_class_structure("class")
-			for _, attribute in ipairs(file_structure.classes["Partner"].attributes) do
-				attribute.marked = false
-				table.insert(attributes, attribute)
+			for _, class in pairs(file_structure.classes) do
+				for _, attribute in pairs(class.attributes) do
+					attribute.marked = false
+					table.insert(attributes, attribute)
+				end
 			end
 			M.attribute_menu("")
 		end

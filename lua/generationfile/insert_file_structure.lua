@@ -172,12 +172,6 @@ function M.get_class_structure(query)
 	local file_structure = {
 		namespaces = {},
 		classes = {
-			{
-				name = "",
-				constructors = {},
-				methods = {},
-				needDestructor = false,
-			},
 		},
 	}
 

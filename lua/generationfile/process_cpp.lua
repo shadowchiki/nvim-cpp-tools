@@ -140,15 +140,15 @@ function M.close_namespaces(cpp_lines, file_structure)
 	end
 end
 
-function M.process_getter(attributes, cpp_lines)
-	print("running process getter ")
-
-	for _, attribute in ipairs(attributes) do
-		table.insert(cpp_lines, attribute.type .. " " .. "text" .. "::" .. attribute.name .. "{")
+function M.process_getter(attribute, cpp_lines)
+  vim.print("Attribute ", attribute)
+	-- for _, attribute in pairs(attributes) do
+		table.insert(cpp_lines, attribute.type .. " " .. "::" .. attribute.name .. "{")
 		table.insert(cpp_lines, "}")
 		table.insert(cpp_lines, "")
-	end
+	-- end
 end
+
 function M.process_setter(attribute, cpp_lines) end
 
 function M.process_file_structure(file_structure)
